@@ -99,6 +99,17 @@ border-radius:3px;pointer-events:none}
 .ach-text{text-align:left;line-height:1.1}
 .ach-label{font-size:.7rem;opacity:.95;letter-spacing:1px}
 .ach-name{font-size:1.1rem}
+.boss{position:absolute;z-index:7;display:grid;place-items:center;filter:drop-shadow(0 0 16px rgba(255,107,157,.5));animation:bossFloat 2.4s ease-in-out infinite}
+.boss svg{width:100%;height:100%}
+.boss.hit-flash{animation:hf 80ms ease-out forwards, bossFloat 2.4s ease-in-out infinite}
+.boss.dead{opacity:0;transform:scale(1.6) rotate(15deg);transition:.4s}
+@keyframes bossFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.boss-hp{position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(280px,60vw);height:22px;background:rgba(5,11,24,.85);border:2px solid #FF6B9D;border-radius:14px;overflow:hidden;z-index:13;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.4)}
+.boss-hp-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#FFD54F,#FF6B9D);transition:width .15s;width:100%}
+.boss-hp-text{position:relative;z-index:1;font-size:.7rem;font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);letter-spacing:.5px}
+.boss-hp.low{border-color:#FF1744;animation:bossLow .5s ease-in-out infinite}
+.boss-hp.low .boss-hp-fill{background:linear-gradient(90deg,#FF1744,#FF6B9D)}
+@keyframes bossLow{0%,100%{box-shadow:0 4px 12px rgba(255,23,68,.4)}50%{box-shadow:0 4px 18px rgba(255,23,68,.8)}}
 .ufo{position:absolute;top:44px;font-size:clamp(1.7rem,4.5vw,2.3rem);z-index:4;filter:drop-shadow(0 0 12px #FFD54F);pointer-events:none}
 .bunker{position:absolute;z-index:4;width:70px;height:34px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#69F0AE,#2E7D32);border:2px solid #A5D6A7}
 .bunker.d2{background:linear-gradient(180deg,#AED581,#558B2F);opacity:.85}
@@ -555,6 +566,11 @@ function spawnBunkers(n) {
 function spawnWave() {
   const L = layout();
   wave += 1;
+  // Boss wave (every 5 waves)
+  if (wave > 1 && wave % 5 === 0) {
+    spawnBoss();
+    return;
+  }
   const spec = waveSpec(wave);
   const gapX = Math.min(L.alienH + 18, (L.w - 48) / Math.max(1, spec.cols));
   const gapY = spec.gapY;
@@ -583,6 +599,82 @@ function spawnWave() {
   setHUD();
   S.toast('WAVE ' + wave + ' · ' + spec.rows + '×' + spec.cols);
   beat();
+}
+
+const BOSS_SVG = '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="bg" cx="50%" cy="40%"><stop offset="0%" stop-color="#FF6B9D"/><stop offset="60%" stop-color="#7B1FA2"/><stop offset="100%" stop-color="#1A0033"/></radialGradient></defs><ellipse cx="50" cy="55" rx="42" ry="32" fill="url(#bg)"/><circle cx="38" cy="48" r="6" fill="#fff"/><circle cx="62" cy="48" r="6" fill="#fff"/><circle cx="38" cy="48" r="3" fill="#FF1744"/><circle cx="62" cy="48" r="3" fill="#FF1744"/><path d="M30 70 Q50 80 70 70" stroke="#FFD54F" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M10 50 Q5 55 8 65" stroke="#7B1FA2" stroke-width="4" fill="none"/><path d="M90 50 Q95 55 92 65" stroke="#7B1FA2" stroke-width="4" fill="none"/><circle cx="20" cy="40" r="3" fill="#FFD54F"/><circle cx="80" cy="40" r="3" fill="#FFD54F"/><circle cx="20" cy="60" r="3" fill="#FFD54F"/><circle cx="80" cy="60" r="3" fill="#FFD54F"/></svg>';
+
+function spawnBoss() {
+  const L = layout();
+  aliens = [];
+  marchDir = 1; marchN = 0; pause = false;
+  const w = Math.min(140, L.w * 0.32);
+  const h = Math.min(110, L.h * 0.18);
+  const x = (L.w - w) / 2;
+  const y = Math.max(48, L.alienTop - 10);
+  const el = document.createElement('div');
+  el.className = 'boss';
+  el.innerHTML = BOSS_SVG;
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  stage.appendChild(el);
+  const bossNum = Math.floor(wave / 5);
+  const hp = 14 + bossNum * 6;
+  const pts = 200 + bossNum * 100;
+  aliens.push({
+    el, x, y, alive: true, wiggle: 0, _row: 99, _boss: true,
+    pts, _hp: hp, _hpMax: hp, _w: w, _h: h,
+    _vx: 1.6 + bossNum * 0.4, _dir: 1
+  });
+  // HP bar overlay
+  const bar = document.createElement('div');
+  bar.className = 'boss-hp';
+  bar.innerHTML = '<div class="boss-hp-fill"></div><div class="boss-hp-text">👑 BOSS · ' + hp + '/' + hp + '</div>';
+  stage.appendChild(bar);
+  aliens[0]._hpBar = bar;
+  // announcement
+  showWaveClear();
+  S.toast('👑 BOSS WAVE ' + wave + '！打佢！');
+  S.tone(220, 0.3, 'sawtooth', 0.15);
+  setTimeout(() => S.tone(180, 0.4, 'sawtooth', 0.15), 200);
+  beat();
+}
+
+function bossHit(b, dmg) {
+  if (!b._boss) return false;
+  b._hp -= dmg;
+  b.el.classList.add('hit-flash');
+  setTimeout(() => b.el.classList.remove('hit-flash'), 80);
+  // update HP bar
+  if (b._hpBar) {
+    const pct = Math.max(0, b._hp) / b._hpMax;
+    b._hpBar.querySelector('.boss-hp-fill').style.width = (pct * 100) + '%';
+    b._hpBar.querySelector('.boss-hp-text').textContent = '👑 BOSS · ' + Math.max(0, b._hp) + '/' + b._hpMax;
+    if (pct < 0.35) b._hpBar.classList.add('low');
+  }
+  if (b._hp <= 0) {
+    b.alive = false;
+    b.el.classList.add('dead');
+    setTimeout(() => { if (b.el.parentNode) b.el.remove(); }, 200);
+    if (b._hpBar && b._hpBar.parentNode) b._hpBar.remove();
+    // big explosion
+    for (let i = 0; i < 30; i++) {
+      setTimeout(() => spawnParticles(b.x + b._w/2 + (Math.random()-0.5)*60, b.y + b._h/2 + (Math.random()-0.5)*40, ['#FFD54F','#FF6B9D','#00E5FF','#A5F3FC'][i%4]), i * 30);
+    }
+    addScore(b.pts);
+    scorePop(b.x + b._w/2, b.y + b._h/2, '+' + b.pts);
+    shake();
+    S.confetti();
+    S.sfxWin();
+    achUnlock('bossSlayer');
+    S.toast('👑 BOSS 擊敗！+' + b.pts);
+    // 5 second break then next wave
+    pause = true;
+    setTimeout(() => { if (!didEnd) spawnWave(); }, 2500);
+    return true;
+  }
+  return false;
 }
 
 function alive() { return aliens.filter(a => a.alive).length; }
@@ -887,6 +979,17 @@ function tick() {
     }
   }
 
+  // boss: side-to-side slow movement + bobbing
+  aliens.forEach(a => {
+    if (!a._boss || !a.alive) return;
+    a.x += a._dir * a._vx;
+    if (a.x < 4) { a.x = 4; a._dir = 1; }
+    if (a.x + a._w > L.w - 4) { a.x = L.w - 4 - a._w; a._dir = -1; }
+    a.y = Math.max(40, a.y + Math.sin(Date.now() / 380) * 0.6);
+    a.el.style.left = a.x + 'px';
+    a.el.style.top = a.y + 'px';
+  });
+
   tickPowerUps();
 
   // danger border when alien near ship lane
@@ -910,9 +1013,11 @@ function tick() {
     const shipTop = L.h - L.shipLane - 8;
     for (const a of aliens) {
       if (!a.alive) continue;
-      if (a.y + L.alienH * 0.85 >= shipTop) {
+      const ah = a._boss ? a._h : L.alienH;
+      if (a.y + ah * 0.85 >= shipTop) {
         a.alive = false; a.el.classList.add('dead');
         setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
+        if (a._hpBar && a._hpBar.parentNode) a._hpBar.remove();
         if (isShielded()) {
           shieldEnd = 0; // consume shield
           S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
@@ -967,8 +1072,23 @@ function tick() {
     }
     for (const a of aliens) {
       if (!a.alive) continue;
-      if (Math.abs((a.x + 16) - laser.x) < 32 && Math.abs((a.y + 16) - laser.y) < 28) {
-        laser.el.remove(); killAlien(a); return false;
+      const aw = a._boss ? (a._w || 100) : 32;
+      const ah = a._boss ? (a._h || 80) : 32;
+      const ax = a._boss ? (a.x + aw/2) : (a.x + 16);
+      const ay = a._boss ? (a.y + ah/2) : (a.y + 16);
+      const hitW = a._boss ? aw * 0.42 : 18;
+      const hitH = a._boss ? ah * 0.42 : 18;
+      if (Math.abs(ax - laser.x) < hitW && Math.abs(ay - laser.y) < hitH) {
+        laser.el.remove();
+        if (a._boss) {
+          if (bossHit(a, 1)) {
+            // boss died, clear remaining lasers near it
+            return false;
+          }
+        } else {
+          killAlien(a);
+        }
+        return false;
       }
     }
     return true;
