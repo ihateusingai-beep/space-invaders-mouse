@@ -292,16 +292,16 @@ window.addEventListener('pointermove', e => {
 });
 
 function tryLeftShoot(e) {
-  if (mode.id !== 'left' || didEnd) return;
+  if ((mode.id !== 'left' && mode.id !== 'left+') || didEnd) return;
   if (e && e.target && e.target.closest && e.target.closest('.top,.hud')) return;
   if (e) e.preventDefault();
   shoot();
 }
-if (mode.id === 'left') {
+if (mode.id === 'left' || mode.id === 'left+') {
   stage.addEventListener('click', tryLeftShoot);
   stage.addEventListener('pointerdown', e => { if (e.button === 0) tryLeftShoot(e); });
 }
-if (mode.id === 'right') {
+if (mode.id === 'right' || mode.id === 'right+') {
   S.bindRight(stage, () => { if (!didEnd) shoot(); }, '用右掣／兩指射');
 }
 
@@ -617,7 +617,7 @@ function tick() {
   const spec = waveSpec(wave || 1);
   const maxY = L.alienMaxY - L.alienH;
 
-  if (mode.id === 'move' && canShoot()) shoot();
+  if ((mode.id === 'move' || mode.id === 'move+') && canShoot()) shoot();
 
   ufoT += 1;
   if (ufoT > 55 * 18 && Math.random() < 0.012) { ufoT = 0; spawnUfo(); }
