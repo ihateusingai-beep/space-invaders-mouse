@@ -127,8 +127,9 @@ border-radius:3px;pointer-events:none}
 /* alien debris particles */
 .debris{position:absolute;pointer-events:none;z-index:8;border-radius:50%;animation:debrisFly .55s ease-out forwards}
 @keyframes debrisFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}}
-.overlay{position:fixed!important;inset:0!important;background:rgba(5,11,24,.75);display:none!important;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;height:100%!important;background:rgba(5,11,24,.75);display:none!important;align-items:center!important;justify-content:center!important;z-index:50;padding:16px}
 .overlay.on{display:flex!important}
+#win .modal{position:relative;margin:auto}
 .modal{width:min(440px,94vw);background:#fff;border:5px solid #FFD54F;border-radius:28px;padding:20px 14px;text-align:center;color:#3D2B5A;max-height:92vh;overflow:auto}
 .modal h2{font-size:1.7rem;margin-bottom:4px}
 .modal .big{font-size:2.2rem;font-weight:900;color:#426eb4;margin:6px 0}
