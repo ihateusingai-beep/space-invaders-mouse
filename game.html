@@ -360,6 +360,7 @@ function layout() {
   // fallback if stage not laid out yet
   const h = Math.max(r.height || 0, window.innerHeight * 0.7, 320);
   const w = Math.max(r.width || 0, window.innerWidth * 0.9, 280);
+  if (!window.__layoutLogged) { window.__layoutLogged = true; console.log('[layout] innerW=' + window.innerWidth + ' innerH=' + window.innerHeight + ' stageRect=' + JSON.stringify({x:r.x,y:r.y,w:r.width,h:r.height}) + ' L=' + JSON.stringify({w,h,shipLane:h*0.22,alienMaxY:h*0.58,alienTop:Math.max(52,h*0.1),alienH:Math.max(36,Math.min(56,w*0.07))})); }
   const shipLane = h * 0.22;
   const bunkerY = h - shipLane - h * 0.06;
   const alienMaxY = h * 0.58;
@@ -807,6 +808,7 @@ function hitBunker(L) {
 
 function tick() {
   if (didEnd) return;
+  try {
   const L = layout();
   const r = { width: L.w, height: L.h, left: 0 };
   const spec = waveSpec(wave || 1);
@@ -865,6 +867,10 @@ function tick() {
   {
     const L = layout();
     const shipTop = L.h - L.shipLane - 8;
+    if (!window.__dangerLogged) {
+      window.__dangerLogged = true;
+      console.log('[tick-danger] L.h=' + L.h + ' shipTop=' + shipTop + ' aliens count=' + aliens.length + ' first.alienY=' + (aliens[0]?.y) + ' first.alienH=' + L.alienH + ' check=' + ((aliens[0]?.y || 0) + L.alienH * 0.85));
+    }
     for (const a of aliens) {
       if (!a.alive) continue;
       if (a.y + L.alienH * 0.85 >= shipTop) {
@@ -933,11 +939,16 @@ function tick() {
   });
 
   raf = requestAnimationFrame(tick);
+  } catch(e) {
+    console.error('[TICK ERROR]', e.message, e.stack);
+    if (!didEnd) endRun(false);
+  }
 }
 
 function endRun(fromClear) {
   if (didEnd) return;
   didEnd = true;
+  console.log('[endRun] fromClear=' + fromClear + ' score=' + score + ' wave=' + wave + ' aliveAliens=' + aliens.filter(a => a.alive).length);
   clearField();
   const rec = S.recordScore(modeId, score, wave);
   const tier = S.tierFrom(score, wave);
@@ -965,6 +976,7 @@ function printCert() {
 }
 
 function start() {
+  console.log('[start] called. didEnd=' + didEnd + ' mode=' + modeId + ' viewport=' + window.innerWidth + 'x' + window.innerHeight);
   clearField();
   didEnd = false; score = 0; wave = 0; streak = 0; lastKill = 0;
   shots = 0; ufoT = 0; autoCool = 0; pause = false; marchDir = 1; marchN = 0;
