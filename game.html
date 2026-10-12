@@ -6,10 +6,12 @@
 <title>太空滑鼠入侵 · 遊戲｜將軍澳培智學校</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:"PingFang HK","Noto Sans TC",system-ui,sans-serif;color:#E0F7FA;
+html,body{height:100%;margin:0;font-family:"PingFang HK","Noto Sans TC",system-ui,sans-serif;color:#E0F7FA;
 background:#050B18;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overflow:hidden}
 button{font:inherit;border:none;cursor:pointer}
-.top{height:clamp(48px,8vh,56px);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;
+/* full-viewport shell — stage must get real height (absolute kids don't expand parent) */
+#gameUI{position:fixed;inset:0;display:flex;flex-direction:column;min-height:0}
+.top{flex:0 0 auto;height:clamp(48px,8vh,56px);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;
 background:linear-gradient(180deg,#0A1628,#07101C);border-bottom:2px solid #00E5FF66}
 .who{display:flex;align-items:center;gap:8px;font-weight:900;min-width:0}
 .av{width:36px;height:36px;border-radius:50%;border:3px solid #00E5FF;display:grid;place-items:center;font-size:1.15rem;background:#102A43;flex-shrink:0}
@@ -17,13 +19,13 @@ background:linear-gradient(180deg,#0A1628,#07101C);border-bottom:2px solid #00E5
 .hint b{background:#FFD54F;color:#1A237E;padding:2px 8px;border-radius:8px}
 .icon{width:42px;height:42px;border-radius:14px;background:#102A43;border:2px solid #00E5FF66;font-size:1.05rem;font-weight:900;color:#E0F7FA}
 .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.hud{height:clamp(34px,6vh,40px);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
+.hud{flex:0 0 auto;height:clamp(34px,6vh,40px);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
 background:#07101C;border-bottom:1px solid #00E5FF33;font-weight:900;font-size:.95rem}
 .hud .score{color:#FFD54F;font-size:1.15rem}
 .hud .wave{color:#00E5FF}
 .hud .mode-tag{color:#90CAF9;font-size:.85rem}
 /* stage fills rest; ship lane = bottom 22%; alien band stays above */
-.stage{height:calc(100% - clamp(82px,14vh,96px));position:relative;overflow:hidden;background:
+.stage{flex:1 1 auto;min-height:0;position:relative;overflow:hidden;background:
 radial-gradient(ellipse 80% 45% at 50% 0%,#1A237E55,transparent 60%),
 linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
 .stage.shake{animation:shake .2s ease}
@@ -31,13 +33,19 @@ linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
 .stage::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,229,255,.03) 3px 4px);pointer-events:none;z-index:9}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:.65;
 background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(2px 2px at 28% 42%,#fff,transparent),radial-gradient(1px 1px at 55% 12%,#fff,transparent),radial-gradient(2px 2px at 72% 38%,#A5F3FC,transparent),radial-gradient(1px 1px at 88% 22%,#fff,transparent)}
-.alien{position:absolute;font-size:clamp(1.35rem,4.2vw,2.15rem);line-height:1;z-index:3;filter:drop-shadow(0 0 8px #69F0AE);transition:opacity .1s,transform .1s;pointer-events:none}
+.alien{position:absolute;width:clamp(40px,7vw,56px);height:clamp(40px,7vw,56px);display:grid;place-items:center;
+font-size:clamp(1.5rem,5vw,2.3rem);line-height:1;z-index:3;
+background:radial-gradient(circle at 50% 45%,#69F0AE55,#1B5E2033 70%,transparent);
+border-radius:12px;filter:drop-shadow(0 0 10px #69F0AE);transition:opacity .1s,transform .1s;pointer-events:none}
 .alien.dead{opacity:0;transform:scale(1.35) rotate(10deg)}
 .ship-wrap{position:absolute;bottom:clamp(10px,2.2vh,18px);left:50%;transform:translateX(-50%);z-index:6;pointer-events:none;display:flex;flex-direction:column;align-items:center}
-.ship{font-size:clamp(2rem,5.5vw,2.6rem);line-height:1;filter:drop-shadow(0 0 14px #00E5FF);animation:hover 1.5s ease-in-out infinite}
+.ship{width:clamp(52px,9vw,72px);height:clamp(52px,9vw,72px);display:grid;place-items:center;
+font-size:clamp(2.1rem,6vw,2.8rem);line-height:1;
+background:radial-gradient(circle at 50% 40%,#00E5FF66,#0D47A133 65%,transparent);
+border-radius:50%;filter:drop-shadow(0 0 16px #00E5FF);animation:hover 1.5s ease-in-out infinite}
 @keyframes hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 .ship-glow{width:42px;height:8px;border-radius:50%;background:radial-gradient(ellipse,#00E5FF88,transparent);margin-top:-3px}
-.laser{position:absolute;width:5px;height:22px;border-radius:4px;background:linear-gradient(#fff,#00E5FF 40%,#FFD54F);box-shadow:0 0 12px #00E5FF;z-index:5;pointer-events:none}
+.laser{position:absolute;width:8px;height:28px;border-radius:4px;background:linear-gradient(#fff,#00E5FF 35%,#FFD54F);box-shadow:0 0 16px #00E5FF,0 0 6px #fff;z-index:5;pointer-events:none}
 .boom{position:absolute;font-size:1.5rem;z-index:7;pointer-events:none;animation:boom .35s ease forwards}
 @keyframes boom{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
 .pop{position:absolute;z-index:8;font-weight:900;font-size:1rem;color:#FFD54F;text-shadow:0 0 8px #00E5FF;pointer-events:none;animation:pop .5s ease forwards}
@@ -155,13 +163,16 @@ const ROW_PTS = [30, 20, 10, 10];
 
 /** Layout metrics — PC + iPad safe bands (aliens never enter ship lane) */
 function layout() {
-  const r = stage.getBoundingClientRect();
-  const h = r.height, w = r.width;
-  const shipLane = h * 0.22;          // bottom 22% = ship only
+  const el = stage || document.getElementById('stage');
+  const r = el.getBoundingClientRect();
+  // fallback if stage not laid out yet
+  const h = Math.max(r.height || 0, window.innerHeight * 0.7, 320);
+  const w = Math.max(r.width || 0, window.innerWidth * 0.9, 280);
+  const shipLane = h * 0.22;
   const bunkerY = h - shipLane - h * 0.06;
-  const alienMaxY = h * 0.58;         // aliens hard-cap (~58% down)
-  const alienTop = Math.max(48, h * 0.08);
-  const alienH = Math.max(28, Math.min(44, w * 0.055));
+  const alienMaxY = h * 0.58;
+  const alienTop = Math.max(52, h * 0.1);
+  const alienH = Math.max(36, Math.min(56, w * 0.07));
   return { w, h, shipLane, bunkerY, alienMaxY, alienTop, alienH };
 }
 
@@ -546,11 +557,21 @@ function start() {
   $('waveClear').classList.remove('on');
   $('win').classList.remove('on');
   setHUD();
-  spawnWave();
-  raf = requestAnimationFrame(tick);
+  // wait 1 frame so flex stage has real height before spawn
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      spawnWave();
+      if (!raf) raf = requestAnimationFrame(tick);
+    });
+  });
 }
 
 start();
+window.addEventListener('resize', () => {
+  if (didEnd || pause) return;
+  // keep ship visible on rotate
+  shipWrap.style.left = (shipX * 100) + '%';
+});
 </script>
 </body>
 </html>
