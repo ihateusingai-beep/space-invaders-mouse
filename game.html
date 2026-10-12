@@ -508,10 +508,13 @@ function scorePop(x, y, t) {
   return p; // caller can add classes
 }
 
+// Laser travel time: 440px / 14px/f = ~31 frames (~0.5s). Use 60 to be safe.
+var MAX_LASER_AGE = 60;
+
 function canShoot() {
   if (didEnd || pause) return false;
   if (isRapid()) return true; // rapid fire ignores cooldown
-  if (lasers.some(L => L.player)) return false; // classic single-shot all modes
+  if (lasers.some(L => L.player && L.age < MAX_LASER_AGE)) return false; // classic single-shot
   if (mode.id === 'move' && Date.now() < autoCool) return false;
   return true;
 }
@@ -527,7 +530,7 @@ function shoot() {
   el.style.left = (sx - 2.5) + 'px'; el.style.top = (sy - 26) + 'px';
   stage.appendChild(el);
   const speed = isRapid() ? -20 : -14;
-  lasers.push({ el, x: sx, y: sy - 26, dx: 0, dy: speed, player: true });
+  lasers.push({ el, x: sx, y: sy - 26, dx: 0, dy: speed, player: true, born: Date.now() });
   S.tone(920, 0.05, 'square', isRapid() ? 0.1 : 0.07);
 }
 
@@ -712,6 +715,7 @@ function tick() {
   });
 
   lasers = lasers.filter(laser => {
+    laser.age = (laser.age || 0) + 1;
     laser.x += laser.dx; laser.y += laser.dy;
     laser.el.style.left = (laser.x - 2.5) + 'px'; laser.el.style.top = laser.y + 'px';
     if (laser.y < -28 || laser.x < -40 || laser.x > L.w + 40) { laser.el.remove(); return false; }
