@@ -64,6 +64,26 @@ border-radius:50%;filter:drop-shadow(0 0 16px #00E5FF);animation:hover 1.5s ease
 .bunker.d2{background:linear-gradient(180deg,#AED581,#558B2F);opacity:.85}
 .bunker.d1{background:linear-gradient(180deg,#9E9E9E,#616161);opacity:.7;height:26px}
 .bunker.dead{opacity:0}
+/* shield ring around ship */
+.ship-shield{position:absolute;border-radius:50%;border:3px solid #00E5FF;box-shadow:0 0 16px #00E5FF88,inset 0 0 12px #00E5FF33;pointer-events:none;z-index:5;opacity:0;transition:opacity .3s}
+.ship-shield.on{opacity:1;animation:shield-pulse 1.2s ease-in-out infinite}
+@keyframes shield-pulse{0%,100%{box-shadow:0 0 16px #00E5FF88,inset 0 0 12px #00E5FF33}50%{box-shadow:0 0 28px #00E5FF,inset 0 0 20px #00E5FF55}}
+/* power-up drops */
+.pu{position:absolute;font-size:clamp(1.3rem,3.5vw,1.7rem);z-index:5;pointer-events:none;filter:drop-shadow(0 0 8px currentColor);padding:4px;border-radius:10px;background:rgba(0,0,0,.55);border:2px solid currentColor}
+@keyframes pu-glow{0%,100%{filter:drop-shadow(0 0 6px currentColor) brightness(1)}50%{filter:drop-shadow(0 0 14px currentColor) brightness(1.2)}}
+.pu{animation:pu-glow 0.8s ease-in-out infinite}
+.pu-score{color:#FFD54F;border-color:#FFD54F}
+.pu-shield{color:#00E5FF;border-color:#00E5FF}
+.pu-rapid{color:#FF6B9D;border-color:#FF6B9D}
+.pu-freeze{color:#A5F3FC;border-color:#A5F3FC}
+/* score flash */
+.flash{position:fixed;inset:0;background:rgba(255,213,79,.18);pointer-events:none;z-index:30;opacity:0;transition:opacity .08s}
+.flash.on{opacity:1}
+/* big score pop */
+.pop.big-pop{font-size:1.5rem;color:#FFD54F}
+/* trophy row on HUD */
+.trophy-row{display:flex;gap:10px;align-items:center;font-size:.9rem}
+.trophy-row span{opacity:.8;font-weight:900}
 .toast{position:fixed;left:50%;top:14%;transform:translateX(-50%) scale(.92);background:#fff;border:4px solid #22c55e;color:#166534;font-size:1.25rem;font-weight:900;padding:12px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:40}
 .toast.show{opacity:1;transform:translateX(-50%) scale(1)}.toast.bad{border-color:#FF6B9D;color:#9f1239}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:45;overflow:hidden}
@@ -115,8 +135,10 @@ body.printing #certPrint{display:block!important}
   <div class="ship-lane" aria-hidden="true"></div>
   <div class="guide" id="guide">清晒外星人！</div>
   <div class="wave-clear" id="waveClear">WAVE CLEAR!</div>
-  <div class="ship-wrap" id="shipWrap"><div class="ship">🚀</div><div class="ship-glow"></div></div>
+  <div class="trophy-row" id="trophies"></div>
+  <div class="ship-wrap" id="shipWrap"><div class="ship">🚀</div><div class="ship-glow"></div><div class="ship-shield" id="shipShield"></div></div>
 </div>
+<div class="flash" id="flash"></div>
 <div class="overlay" id="win">
   <div class="modal">
     <div style="font-size:2.3rem" id="winMedal">🥇</div>
@@ -199,6 +221,8 @@ let score = 0, wave = 0, didEnd = false, shipX = 0.5;
 let aliens = [], lasers = [], bunkers = [], raf = 0;
 let marchDir = 1, marchN = 0, streak = 0, lastKill = 0;
 let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0;
+let powerUps = []; // { el, x, y, type, dy }
+let shieldEnd = 0, rapidEnd = 0, boostEnd = 0, freezeEnd = 0;
 
 const stage = $('stage'), shipWrap = $('shipWrap');
 const displayName = (function () {
@@ -261,14 +285,31 @@ function clearField() {
   aliens.forEach(a => a.el && a.el.remove());
   lasers.forEach(l => l.el && l.el.remove());
   bunkers.forEach(b => b.el && b.el.remove());
+  powerUps.forEach(p => p.el && p.el.remove());
   if (ufo && ufo.el) ufo.el.remove();
-  aliens = []; lasers = []; bunkers = []; ufo = null;
+  aliens = []; lasers = []; bunkers = []; powerUps = []; ufo = null;
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
 }
 
 function setHUD() {
   $('scoreLab').textContent = score + ' 分';
   $('waveLab').textContent = 'WAVE ' + Math.max(1, wave);
+}
+
+function updateHUDTrophies() {
+  const el = $('trophies');
+  const now = Date.now();
+  const active = [
+    { end: shieldEnd, emoji: '🛡️', label: '護盾' },
+    { end: rapidEnd,  emoji: '⚡', label: '連射' },
+    { end: boostEnd,  emoji: '💎', label: '雙倍' },
+    { end: freezeEnd, emoji: '❄️', label: '暫停' },
+  ].filter(p => Date.now() < p.end);
+  if (active.length === 0) { el.textContent = ''; return; }
+  el.textContent = active.map(p => {
+    const sec = Math.ceil((p.end - now) / 1000);
+    return p.emoji + ' ' + sec + 's';
+  }).join('  ');
 }
 
 function spawnBunkers(n) {
@@ -323,6 +364,76 @@ function spawnWave() {
 
 function alive() { return aliens.filter(a => a.alive).length; }
 
+/* ── power-ups ── */
+const PU_TYPES = [
+  { id: 'shield',  emoji: '🛡️', label: '護盾', color: '#00E5FF', dur: 9000,  sound: () => S.tone(440, 0.12, 'sine', 0.15) },
+  { id: 'rapid',  emoji: '⚡', label: '連射', color: '#FF6B9D', dur: 6000,  sound: () => S.tone(660, 0.08, 'sine', 0.12) },
+  { id: 'score',  emoji: '💎', label: '雙倍', color: '#FFD54F', dur: 10000, sound: () => S.tone(784, 0.1, 'triangle', 0.14) },
+  { id: 'freeze', emoji: '❄️', label: '暫停', color: '#A5F3FC', dur: 5000,  sound: () => S.tone(330, 0.15, 'sine', 0.12) },
+];
+
+function spawnPowerUp(x, y) {
+  if (Math.random() > 0.18) return; // 18% drop chance
+  const type = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
+  const el = document.createElement('div');
+  el.className = 'pu pu-' + type.id;
+  el.textContent = type.emoji;
+  el.style.left = (x - 14) + 'px';
+  el.style.top = y + 'px';
+  stage.appendChild(el);
+  powerUps.push({ el, x, y, type, dy: 2.2 + Math.random() * 0.8 });
+  S.tone(600, 0.04, 'sine', 0.06);
+}
+
+function tickPowerUps() {
+  powerUps = powerUps.filter(pu => {
+    pu.y += pu.dy;
+    pu.el.style.top = pu.y + 'px';
+    const r = stage.getBoundingClientRect();
+    const shipY = r.height - 44;
+    const shipLeft = shipX * r.width - 28;
+    // hit ship?
+    if (pu.y >= shipY - 36 && pu.y <= shipY + 10 &&
+        pu.x >= shipLeft - 14 && pu.x <= shipLeft + 56) {
+      activatePowerUp(pu.type);
+      pu.el.remove();
+      return false;
+    }
+    if (pu.y > r.height + 30) { pu.el.remove(); return false; }
+    return true;
+  });
+}
+
+function activatePowerUp(type) {
+  const now = Date.now();
+  if (type.id === 'shield') {
+    shieldEnd = now + type.dur;
+    S.toast('🛡️ 護盾 ' + (type.dur / 1000) + ' 秒');
+  } else if (type.id === 'rapid') {
+    rapidEnd = now + type.dur;
+    S.toast('⚡ 連射 ' + (type.dur / 1000) + ' 秒');
+  } else if (type.id === 'score') {
+    boostEnd = now + type.dur;
+    S.toast('💎 雙倍 ' + (type.dur / 1000) + ' 秒');
+  } else if (type.id === 'freeze') {
+    freezeEnd = now + type.dur;
+    S.toast('❄️ 暫停 ' + (type.dur / 1000) + ' 秒');
+  }
+  S.sfxOk();
+  type.sound();
+  flashScreen();
+}
+
+function flashScreen() {
+  const f = $('flash');
+  f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 80);
+}
+
+function isShielded()  { return Date.now() < shieldEnd; }
+function isRapid()    { return Date.now() < rapidEnd; }
+function isBoosted()  { return Date.now() < boostEnd; }
+function isFrozen()   { return Date.now() < freezeEnd; }
+
 function marchPeriod() {
   const spec = waveSpec(wave || 1);
   const a = alive();
@@ -356,10 +467,12 @@ function scorePop(x, y, t) {
   const p = document.createElement('div'); p.className = 'pop'; p.textContent = t;
   p.style.left = x + 'px'; p.style.top = y + 'px';
   stage.appendChild(p); setTimeout(() => p.remove(), 500);
+  return p; // caller can add classes
 }
 
 function canShoot() {
   if (didEnd || pause) return false;
+  if (isRapid()) return true; // rapid fire ignores cooldown
   if (lasers.some(L => L.player)) return false; // classic single-shot all modes
   if (mode.id === 'move' && Date.now() < autoCool) return false;
   return true;
@@ -367,15 +480,16 @@ function canShoot() {
 
 function shoot() {
   if (!canShoot()) return;
-  if (mode.id === 'move') autoCool = Date.now() + 420;
+  if (mode.id === 'move' && !isRapid()) autoCool = Date.now() + 420;
   const r = stage.getBoundingClientRect();
   const sx = shipX * r.width;
   shots += 1;
   const el = document.createElement('div'); el.className = 'laser';
   el.style.left = (sx - 2.5) + 'px'; el.style.top = (r.height - 70) + 'px';
   stage.appendChild(el);
-  lasers.push({ el, x: sx, y: r.height - 70, dx: 0, dy: -14, player: true });
-  S.tone(920, 0.05, 'square', 0.07);
+  const speed = isRapid() ? -20 : -14;
+  lasers.push({ el, x: sx, y: r.height - 70, dx: 0, dy: speed, player: true });
+  S.tone(920, 0.05, 'square', isRapid() ? 0.1 : 0.07);
 }
 
 function addScore(pts) {
@@ -399,10 +513,16 @@ function killAlien(a, pts) {
     c.classList.add('on');
     clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('on'), 850);
   }
-  const gain = (pts || a.pts) + (streak >= 3 ? 10 : 0);
+  const base = pts || a.pts;
+  const gain = (isBoosted() ? base * 2 : base) + (streak >= 3 ? 10 : 0);
   addScore(gain);
-  scorePop(a.x, a.y, '+' + gain);
-  S.sfxOk(); shake(); beat();
+  const popEl = scorePop(a.x, a.y, '+' + gain);
+  if (isBoosted()) popEl.classList.add('big-pop');
+  S.sfxOk(); shake();
+  if (!isFrozen()) beat();
+  flashScreen();
+  // power-up drop
+  if (alive() > 0) spawnPowerUp(a.x + 16, a.y);
   if (alive() === 0) onWaveClear();
 }
 
@@ -464,25 +584,46 @@ function tick() {
     if (ufo.x < -70 || ufo.x > L.w + 70) { ufo.el.remove(); ufo = null; }
   }
 
-  marchN += 1;
-  if (!pause && marchN >= marchPeriod()) {
-    marchN = 0;
-    let hitEdge = false;
-    aliens.forEach(a => {
-      if (!a.alive) return;
-      a.x += marchDir * (9 + wave * 0.5);
-      if (a.x < 6 || a.x > L.w - 34) hitEdge = true;
-    });
-    if (hitEdge) {
-      marchDir *= -1;
-      // drop only while under hard cap — never enter ship lane
+  // freeze — aliens stop marching
+  if (!isFrozen()) {
+    marchN += 1;
+    if (!pause && marchN >= marchPeriod()) {
+      marchN = 0;
+      let hitEdge = false;
       aliens.forEach(a => {
         if (!a.alive) return;
-        if (a.y + spec.drop <= maxY) a.y += spec.drop;
+        a.x += marchDir * (9 + wave * 0.5);
+        if (a.x < 6 || a.x > L.w - 34) hitEdge = true;
       });
+      if (hitEdge) {
+        marchDir *= -1;
+        aliens.forEach(a => {
+          if (!a.alive) return;
+          if (a.y + spec.drop <= maxY) a.y += spec.drop;
+        });
+      }
+      beat();
     }
-    beat();
   }
+
+  tickPowerUps();
+
+  // update shield visual
+  const shield = $('shipShield');
+  if (isShielded()) {
+    const sw = $('shipWrap');
+    const rect = sw.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    shield.style.width = (rect.width + 16) + 'px';
+    shield.style.height = (rect.height + 16) + 'px';
+    shield.style.left = (rect.left - stageRect.left - 8) + 'px';
+    shield.style.top = (rect.top - stageRect.top - 8) + 'px';
+    shield.classList.add('on');
+  } else {
+    shield.classList.remove('on');
+  }
+
+  updateHUDTrophies();
 
   aliens.forEach(a => {
     if (!a.alive) return;
