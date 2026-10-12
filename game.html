@@ -950,6 +950,7 @@ function endRun(fromClear) {
   if (didEnd) return;
   didEnd = true;
   console.log('[endRun] fromClear=' + fromClear + ' score=' + score + ' wave=' + wave + ' aliveAliens=' + aliens.filter(a => a.alive).length);
+  $('win').style.display = ''; // clear any inline display:none
   clearField();
   const rec = S.recordScore(modeId, score, wave);
   const tier = S.tierFrom(score, wave);
