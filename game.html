@@ -519,6 +519,8 @@ function spawnBunkers(n) {
 
 function spawnWave() {
   const L = layout();
+  const shipTop = L.h - L.shipLane - 8;
+  console.log('[spawnWave] L.h=' + L.h + ' L.shipLane=' + L.shipLane + ' shipTop=' + shipTop + ' alienMaxY=' + L.alienMaxY + ' alienTop=' + L.alienTop);
   wave += 1;
   const spec = waveSpec(wave);
   const gapX = Math.min(L.alienH + 18, (L.w - 48) / Math.max(1, spec.cols));
@@ -873,6 +875,7 @@ function tick() {
           S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
           flashScreen(); shake();
         } else {
+          console.log('[DANGER] alien y=' + a.y + ' alienH=' + L.alienH + ' shipTop=' + shipTop + ' L.h=' + L.h);
           endRun(false); return;
         }
       }
