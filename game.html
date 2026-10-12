@@ -127,9 +127,8 @@ border-radius:3px;pointer-events:none}
 /* alien debris particles */
 .debris{position:absolute;pointer-events:none;z-index:8;border-radius:50%;animation:debrisFly .55s ease-out forwards}
 @keyframes debrisFly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.2)}}}
-.overlay{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;height:100%!important;background:rgba(5,11,24,.75);display:none!important;align-items:center!important;justify-content:center!important;z-index:50;padding:16px}
-.overlay.on{display:flex!important}
-#win .modal{position:relative;margin:auto}
+.overlay{position:fixed;inset:0;background:rgba(5,11,24,.75);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay.on{display:flex}
 .modal{width:min(440px,94vw);background:#fff;border:5px solid #FFD54F;border-radius:28px;padding:20px 14px;text-align:center;color:#3D2B5A;max-height:92vh;overflow:auto}
 .modal h2{font-size:1.7rem;margin-bottom:4px}
 .modal .big{font-size:2.2rem;font-weight:900;color:#426eb4;margin:6px 0}
@@ -361,7 +360,6 @@ function layout() {
   // fallback if stage not laid out yet
   const h = Math.max(r.height || 0, window.innerHeight * 0.7, 320);
   const w = Math.max(r.width || 0, window.innerWidth * 0.9, 280);
-  if (!window.__layoutLogged) { window.__layoutLogged = true; console.log('[layout] innerW=' + window.innerWidth + ' innerH=' + window.innerHeight + ' stageRect=' + JSON.stringify({x:r.x,y:r.y,w:r.width,h:r.height}) + ' L=' + JSON.stringify({w,h,shipLane:h*0.22,alienMaxY:h*0.58,alienTop:Math.max(52,h*0.1),alienH:Math.max(36,Math.min(56,w*0.07))})); }
   const shipLane = h * 0.22;
   const bunkerY = h - shipLane - h * 0.06;
   const alienMaxY = h * 0.58;
@@ -521,8 +519,6 @@ function spawnBunkers(n) {
 
 function spawnWave() {
   const L = layout();
-  const shipTop = L.h - L.shipLane - 8;
-  console.log('[spawnWave] L.h=' + L.h + ' L.shipLane=' + L.shipLane + ' shipTop=' + shipTop + ' alienMaxY=' + L.alienMaxY + ' alienTop=' + L.alienTop);
   wave += 1;
   const spec = waveSpec(wave);
   const gapX = Math.min(L.alienH + 18, (L.w - 48) / Math.max(1, spec.cols));
@@ -809,7 +805,6 @@ function hitBunker(L) {
 
 function tick() {
   if (didEnd) return;
-  try {
   const L = layout();
   const r = { width: L.w, height: L.h, left: 0 };
   const spec = waveSpec(wave || 1);
@@ -868,10 +863,6 @@ function tick() {
   {
     const L = layout();
     const shipTop = L.h - L.shipLane - 8;
-    if (!window.__dangerLogged) {
-      window.__dangerLogged = true;
-      console.log('[tick-danger] L.h=' + L.h + ' shipTop=' + shipTop + ' aliens count=' + aliens.length + ' first.alienY=' + (aliens[0]?.y) + ' first.alienH=' + L.alienH + ' check=' + ((aliens[0]?.y || 0) + L.alienH * 0.85));
-    }
     for (const a of aliens) {
       if (!a.alive) continue;
       if (a.y + L.alienH * 0.85 >= shipTop) {
@@ -882,7 +873,6 @@ function tick() {
           S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
           flashScreen(); shake();
         } else {
-          console.log('[DANGER] alien y=' + a.y + ' alienH=' + L.alienH + ' shipTop=' + shipTop + ' L.h=' + L.h);
           endRun(false); return;
         }
       }
@@ -940,16 +930,11 @@ function tick() {
   });
 
   raf = requestAnimationFrame(tick);
-  } catch(e) {
-    console.error('[TICK ERROR]', e.message, e.stack);
-    if (!didEnd) endRun(false);
-  }
 }
 
 function endRun(fromClear) {
   if (didEnd) return;
   didEnd = true;
-  console.log('[endRun] fromClear=' + fromClear + ' score=' + score + ' wave=' + wave + ' aliveAliens=' + aliens.filter(a => a.alive).length);
   $('win').style.display = ''; // clear any inline display:none
   clearField();
   const rec = S.recordScore(modeId, score, wave);
@@ -978,7 +963,6 @@ function printCert() {
 }
 
 function start() {
-  console.log('[start] called. didEnd=' + didEnd + ' mode=' + modeId + ' viewport=' + window.innerWidth + 'x' + window.innerHeight);
   clearField();
   didEnd = false; score = 0; wave = 0; streak = 0; lastKill = 0;
   shots = 0; ufoT = 0; autoCool = 0; pause = false; marchDir = 1; marchN = 0;
