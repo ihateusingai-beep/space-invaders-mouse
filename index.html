@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>太空滑鼠入侵｜將軍澳培智學校</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;font-family:"PingFang HK","Noto Sans TC",system-ui,sans-serif;color:#3D2B5A;
+background:linear-gradient(180deg,#e8f1fb 0%,#d6e6f7 40%,#c5daf0 100%);
+-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}
+button{font:inherit;border:none;cursor:pointer}
+body{display:flex;flex-direction:column;min-height:100vh}
+.header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:rgba(255,255,255,.92);border-bottom:3px solid #426eb4;box-shadow:0 4px 16px rgba(66,110,180,.15)}
+.header img{width:64px;height:64px;border-radius:50%;object-fit:contain;background:#fff;border:3px solid #426eb4}
+.header .t{flex:1}
+.header h1{font-size:clamp(1.15rem,3.5vw,1.55rem);font-weight:900;color:#426eb4;line-height:1.2}
+.header p{font-weight:800;opacity:.75;font-size:.95rem}
+.main{flex:1;width:min(720px,100%);margin:0 auto;padding:14px 14px 28px}
+.card{background:#fff;border-radius:20px;border:3px solid rgba(66,110,180,.2);padding:14px 14px 16px;margin-bottom:14px;box-shadow:0 8px 24px rgba(66,110,180,.1)}
+.sec{font-weight:900;font-size:1.05rem;margin-bottom:10px;color:#426eb4}
+.who-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.who-btn{min-height:72px;border-radius:16px;background:#f0f6fc;border:3px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:900}
+.who-btn .e{font-size:1.8rem;line-height:1}
+.who-btn.on{border-color:#426eb4;background:#dbe8f8;box-shadow:0 0 0 2px #FFD54F}
+.name-row{display:flex;gap:8px;margin-top:10px}
+.name-row input{flex:1;min-height:48px;border-radius:14px;border:3px solid #426eb4;padding:8px 12px;font-size:1.1rem;font-weight:800;color:#3D2B5A}
+.modes{display:grid;gap:12px}
+.mode{display:flex;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:18px;background:linear-gradient(135deg,#0A1628,#1A237E);color:#E0F7FA;border:3px solid #00E5FF66;min-height:88px;box-shadow:0 8px 20px rgba(10,22,40,.25)}
+.mode:active{transform:scale(.98)}
+.mode .em{font-size:2.2rem;width:56px;text-align:center}
+.mode .body{flex:1}
+.mode .title{font-size:1.2rem;font-weight:900}
+.mode .tag{font-size:.9rem;opacity:.85;font-weight:800;margin-top:2px}
+.mode .best{font-size:.85rem;font-weight:900;color:#FFD54F;margin-top:4px}
+.mode .go{font-weight:900;background:#FFD54F;color:#1A237E;padding:10px 14px;border-radius:999px;font-size:1rem}
+.tips{font-weight:800;line-height:1.5;font-size:.95rem;opacity:.85}
+.tips b{color:#426eb4}
+.chk{display:flex;align-items:center;gap:8px;font-weight:800;margin-top:8px}
+.footer{text-align:center;padding:12px;font-size:.8rem;font-weight:700;opacity:.65}
+.toast{position:fixed;left:50%;top:14%;transform:translateX(-50%) scale(.92);background:#fff;border:4px solid #22c55e;color:#166534;font-size:1.2rem;font-weight:900;padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:40}
+.toast.show{opacity:1;transform:translateX(-50%) scale(1)}.toast.bad{border-color:#FF6B9D;color:#9f1239}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<header class="header">
+  <img id="logo" alt="將軍澳培智學校校徽" width="64" height="64">
+  <div class="t">
+    <h1>太空滑鼠入侵</h1>
+    <p>將軍澳培智學校 · 滑鼠訓練</p>
+  </div>
+</header>
+<main class="main">
+  <section class="card">
+    <div class="sec">👤 我係邊個</div>
+    <div class="who-grid" id="whoGrid"></div>
+    <div class="name-row">
+      <input id="studentName" type="text" maxlength="12" autocomplete="off" spellcheck="false" placeholder="名字（可留空）">
+    </div>
+    <label class="chk"><input type="checkbox" id="chkAuto"> 入遊戲自動讀</label>
+  </section>
+
+  <section class="card">
+    <div class="sec">🎮 揀操縱方法（全開）</div>
+    <div class="modes" id="modes"></div>
+  </section>
+
+  <section class="card">
+    <div class="sec">📌 點玩</div>
+    <p class="tips">
+      <b>無計時</b> · 盡量打高分 · 清一波再一波<br>
+      外星人越少越快 · 神秘飛碟有 bonus<br>
+      觸到防禦線會退後再戰（唔扣命）
+    </p>
+  </section>
+</main>
+<footer class="footer">Copyright © Tseung Kwan O Pui Chi School. All Rights Reserved.</footer>
+<script src="./shared.js"></script>
+<script>
+const S = SIMouse;
+S.lockSEN(); S.armAudio();
+document.getElementById('logo').src = S.LOGO;
+
+let who = S.loadWho() || S.WHO[0];
+S.saveWho(who);
+const nameEl = document.getElementById('studentName');
+nameEl.value = localStorage.getItem('si_mouse_name') || '';
+nameEl.addEventListener('change', () => S.saveName(nameEl.value));
+nameEl.addEventListener('blur', () => S.saveName(nameEl.value));
+
+const chk = document.getElementById('chkAuto');
+chk.checked = S.autoSpeak();
+chk.onchange = () => S.setAutoSpeak(chk.checked);
+
+function renderWho() {
+  const g = document.getElementById('whoGrid');
+  g.innerHTML = '';
+  S.WHO.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'who-btn' + (who.id === p.id ? ' on' : '');
+    b.innerHTML = '<span class="e">' + p.emoji + '</span><span>' + p.name + '</span>';
+    b.onclick = () => { who = p; S.saveWho(p); renderWho(); };
+    g.appendChild(b);
+  });
+}
+
+function renderModes() {
+  const box = document.getElementById('modes');
+  box.innerHTML = '';
+  S.MODES.forEach(m => {
+    const b = S.bestOf(m.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mode';
+    btn.innerHTML =
+      '<div class="em">' + m.emoji + '</div>' +
+      '<div class="body"><div class="title">' + m.title + '</div>' +
+      '<div class="tag">' + m.tag + '</div>' +
+      '<div class="best">最高 ' + b.best + ' 分 · WAVE ' + b.waves + '</div></div>' +
+      '<span class="go">開始</span>';
+    btn.onclick = () => {
+      S.saveName(nameEl.value);
+      location.href = S.gameUrl(m.id);
+    };
+    box.appendChild(btn);
+  });
+}
+
+renderWho();
+renderModes();
+</script>
+</body>
+</html>

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>太空滑鼠入侵 · 遊戲｜將軍澳培智學校</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:"PingFang HK","Noto Sans TC",system-ui,sans-serif;color:#E0F7FA;
+background:#050B18;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overflow:hidden}
+button{font:inherit;border:none;cursor:pointer}
+.top{height:56px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;
+background:linear-gradient(180deg,#0A1628,#07101C);border-bottom:2px solid #00E5FF66}
+.who{display:flex;align-items:center;gap:8px;font-weight:900;min-width:0}
+.av{width:36px;height:36px;border-radius:50%;border:3px solid #00E5FF;display:grid;place-items:center;font-size:1.15rem;background:#102A43;flex-shrink:0}
+.hint{flex:1;text-align:center;font-size:clamp(.85rem,2vw,1.2rem);font-weight:900}
+.hint b{background:#FFD54F;color:#1A237E;padding:2px 8px;border-radius:8px}
+.icon{width:42px;height:42px;border-radius:14px;background:#102A43;border:2px solid #00E5FF66;font-size:1.05rem;font-weight:900;color:#E0F7FA}
+.row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.hud{height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
+background:#07101C;border-bottom:1px solid #00E5FF33;font-weight:900;font-size:.95rem}
+.hud .score{color:#FFD54F;font-size:1.15rem}
+.hud .wave{color:#00E5FF}
+.hud .mode-tag{color:#90CAF9;font-size:.85rem}
+.stage{height:calc(100% - 96px);position:relative;overflow:hidden;background:
+radial-gradient(ellipse 80% 45% at 50% 0%,#1A237E55,transparent 60%),
+linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
+.stage.shake{animation:shake .2s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.stage::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,229,255,.03) 3px 4px);pointer-events:none;z-index:9}
+.stars{position:absolute;inset:0;pointer-events:none;opacity:.65;
+background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(2px 2px at 28% 42%,#fff,transparent),radial-gradient(1px 1px at 55% 12%,#fff,transparent),radial-gradient(2px 2px at 72% 38%,#A5F3FC,transparent),radial-gradient(1px 1px at 88% 22%,#fff,transparent)}
+.alien{position:absolute;font-size:clamp(1.5rem,5vw,2.3rem);line-height:1;z-index:3;filter:drop-shadow(0 0 8px #69F0AE);transition:opacity .1s,transform .1s;pointer-events:none}
+.alien.dead{opacity:0;transform:scale(1.35) rotate(10deg)}
+.ship-wrap{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:6;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+.ship{font-size:2.5rem;line-height:1;filter:drop-shadow(0 0 14px #00E5FF);animation:hover 1.5s ease-in-out infinite}
+@keyframes hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.ship-glow{width:42px;height:8px;border-radius:50%;background:radial-gradient(ellipse,#00E5FF88,transparent);margin-top:-3px}
+.laser{position:absolute;width:5px;height:22px;border-radius:4px;background:linear-gradient(#fff,#00E5FF 40%,#FFD54F);box-shadow:0 0 12px #00E5FF;z-index:5;pointer-events:none}
+.boom{position:absolute;font-size:1.5rem;z-index:7;pointer-events:none;animation:boom .35s ease forwards}
+@keyframes boom{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
+.pop{position:absolute;z-index:8;font-weight:900;font-size:1rem;color:#FFD54F;text-shadow:0 0 8px #00E5FF;pointer-events:none;animation:pop .5s ease forwards}
+@keyframes pop{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-30px)}}
+.defend{position:absolute;left:6%;right:6%;bottom:58px;height:2px;background:linear-gradient(90deg,transparent,#FF6B9D99,transparent);z-index:2;pointer-events:none}
+.defend::after{content:"防禦線";position:absolute;right:0;top:-15px;font-size:.7rem;font-weight:900;color:#FF6B9D}
+.guide{position:absolute;left:10px;bottom:8px;z-index:5;background:rgba(10,22,40,.92);border:2px solid #00E5FF;border-radius:14px;padding:6px 10px;font-weight:900;max-width:58%;font-size:.9rem}
+.combo{position:absolute;top:10px;right:10px;z-index:6;font-size:clamp(1rem,2.8vw,1.35rem);font-weight:900;color:#FFD54F;text-shadow:0 0 10px #FF6B9D;opacity:0;transform:scale(.8);transition:.15s;pointer-events:none}
+.combo.on{opacity:1;transform:scale(1.1)}
+.heart{position:absolute;top:10px;left:10px;z-index:5;font-size:.85rem;font-weight:900;color:#80DEEA;pointer-events:none}
+.wave-clear{position:absolute;left:50%;top:36%;transform:translate(-50%,-50%) scale(.85);z-index:12;background:rgba(10,22,40,.94);border:3px solid #FFD54F;color:#FFD54F;font-weight:900;font-size:clamp(1.1rem,3.2vw,1.55rem);padding:12px 16px;border-radius:18px;opacity:0;pointer-events:none;transition:.2s;text-align:center}
+.wave-clear.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.ufo{position:absolute;top:44px;font-size:clamp(1.7rem,4.5vw,2.3rem);z-index:4;filter:drop-shadow(0 0 12px #FFD54F);pointer-events:none}
+.bunker{position:absolute;z-index:4;width:70px;height:34px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#69F0AE,#2E7D32);border:2px solid #A5D6A7}
+.bunker.d2{background:linear-gradient(180deg,#AED581,#558B2F);opacity:.85}
+.bunker.d1{background:linear-gradient(180deg,#9E9E9E,#616161);opacity:.7;height:26px}
+.bunker.dead{opacity:0}
+.toast{position:fixed;left:50%;top:14%;transform:translateX(-50%) scale(.92);background:#fff;border:4px solid #22c55e;color:#166534;font-size:1.25rem;font-weight:900;padding:12px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:40}
+.toast.show{opacity:1;transform:translateX(-50%) scale(1)}.toast.bad{border-color:#FF6B9D;color:#9f1239}
+.confetti{position:fixed;inset:0;pointer-events:none;z-index:45;overflow:hidden}
+.confetti i{position:absolute;top:-16px;width:10px;height:16px;border-radius:3px;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+.overlay{position:fixed;inset:0;background:rgba(5,11,24,.75);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.overlay.on{display:flex}
+.modal{width:min(440px,94vw);background:#fff;border:5px solid #FFD54F;border-radius:28px;padding:20px 14px;text-align:center;color:#3D2B5A;max-height:92vh;overflow:auto}
+.modal h2{font-size:1.7rem;margin-bottom:4px}
+.modal .big{font-size:2.2rem;font-weight:900;color:#426eb4;margin:6px 0}
+.modal p{font-weight:800;opacity:.85;margin-bottom:8px}
+.btn{min-height:52px;min-width:110px;padding:10px 14px;border-radius:999px;background:linear-gradient(135deg,#00BCD4,#7C4DFF);color:#fff;font-size:1.1rem;font-weight:900}
+.btn.ghost{background:#fff;color:#3D2B5A;border:3px solid rgba(61,43,90,.12)}
+.btn.school{background:#426eb4}
+#certPrint{display:none}
+body.printing #gameUI{display:none!important}
+body.printing #certPrint{display:block!important}
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  html,body{background:#fff!important;height:auto!important;overflow:visible!important}
+  body.printing #gameUI{display:none!important}
+  body.printing #certPrint{display:block!important}
+  #certSheet{width:100%;border:6px solid #426eb4;border-radius:12px;padding:18px;text-align:center}
+}
+</style>
+</head>
+<body>
+<div id="gameUI">
+<div class="toast" id="toast"></div>
+<div class="confetti" id="confetti"></div>
+<div class="top">
+  <div class="who"><div class="av" id="av">🐱</div><span id="whoName">同學</span></div>
+  <div class="hint" id="hint">左右移 · <b>射</b></div>
+  <div class="row">
+    <button class="icon" id="btnSpeak" type="button">🔊</button>
+    <button class="icon" id="btnEnd" type="button" title="結束計分">🏁</button>
+    <button class="icon" id="btnHub" type="button">🏠</button>
+  </div>
+</div>
+<div class="hud">
+  <span class="mode-tag" id="modeTag">模式</span>
+  <span class="score" id="scoreLab">0 分</span>
+  <span class="wave" id="waveLab">WAVE 1</span>
+</div>
+<div class="stage" id="stage">
+  <div class="stars"></div>
+  <div class="heart" id="heart">♥ 節奏</div>
+  <div class="combo" id="combo">連撃 ×2</div>
+  <div class="defend"></div>
+  <div class="guide" id="guide">清晒外星人！</div>
+  <div class="wave-clear" id="waveClear">WAVE CLEAR!</div>
+  <div class="ship-wrap" id="shipWrap"><div class="ship">🚀</div><div class="ship-glow"></div></div>
+</div>
+<div class="overlay" id="win">
+  <div class="modal">
+    <div style="font-size:2.3rem" id="winMedal">🥇</div>
+    <h2>本局完！</h2>
+    <div class="big" id="winScore">0 分</div>
+    <p id="winMsg">WAVE · 最高分</p>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="btnRetry" type="button">再玩</button>
+      <button class="btn school" id="btnCert" type="button">證書</button>
+      <button class="btn" id="btnHub2" type="button">主頁</button>
+    </div>
+  </div>
+</div>
+</div>
+<div id="certPrint">
+  <div id="certSheet">
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:8px">
+      <img id="certLogo" width="72" height="72" alt="校徽">
+      <div style="font-size:1.5rem;font-weight:900;color:#426eb4">將軍澳培智學校</div>
+    </div>
+    <div style="font-size:1.8rem;font-weight:900;margin:8px 0" id="certTitle">證書</div>
+    <div style="font-size:1.3rem;font-weight:800" id="certName">同學</div>
+    <div style="font-size:1.15rem;font-weight:800;margin-top:8px" id="certSkill">技能</div>
+    <div style="font-size:1.4rem;font-weight:900;margin-top:12px;color:#426eb4" id="certScore">0 分</div>
+    <div style="margin-top:16px;font-size:.9rem;opacity:.7">Copyright © Tseung Kwan O Pui Chi School</div>
+  </div>
+</div>
+<script src="./shared.js"></script>
+<script>
+/**
+ * Classic Space Invaders loop (SEN mouse trainer)
+ * Modes: move (auto) | left click | right click
+ * No timer — score + endless deepening waves
+ */
+const S = SIMouse, $ = S.$;
+S.lockSEN(); S.armAudio();
+
+const params = new URLSearchParams(location.search);
+const modeId = ['move', 'left', 'right'].includes(params.get('mode')) ? params.get('mode') : 'move';
+const mode = S.modeMeta(modeId);
+
+const ROWS_FACE = ['🦑', '🦀', '🐙', '👾'];
+const ROW_PTS = [30, 20, 10, 10];
+
+/** Wave blueprint — deepens forever */
+function waveSpec(w) {
+  // w starts 1
+  const rows = Math.min(5, 2 + Math.floor((w - 1) / 2));
+  const cols = Math.min(8, 4 + Math.floor((w - 1) / 2));
+  const basePeriod = Math.max(10, 36 - w * 2);
+  const minPeriod = Math.max(4, 12 - Math.floor(w / 2));
+  const drop = Math.min(22, 12 + w);
+  const bunkers = w >= 3 ? Math.min(4, 2 + Math.floor((w - 3) / 2)) : 0;
+  const yBias = Math.min(56, (w - 1) * 6); // lower start each wave
+  return { rows, cols, basePeriod, minPeriod, drop, bunkers, yBias };
+}
+
+let score = 0, wave = 0, didEnd = false, shipX = 0.5;
+let aliens = [], lasers = [], bunkers = [], raf = 0;
+let marchDir = 1, marchN = 0, streak = 0, lastKill = 0;
+let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0;
+
+const stage = $('stage'), shipWrap = $('shipWrap');
+const displayName = (function () {
+  const n = (params.get('name') || localStorage.getItem('si_mouse_name') || '').trim();
+  let who = S.loadWho();
+  if (params.get('who')) {
+    const p = S.WHO.find(x => x.id === params.get('who'));
+    if (p) { who = p; S.saveWho(p); }
+  }
+  if (!who) who = S.WHO[0];
+  $('av').textContent = who.emoji || '🐱';
+  $('whoName').textContent = n || who.name || '同學';
+  return n || who.name || '同學';
+})();
+
+$('modeTag').textContent = mode.emoji + ' ' + mode.title;
+$('hint').innerHTML = mode.id === 'move'
+  ? '左右移 · <b>自動射</b>'
+  : mode.id === 'left'
+    ? '左右移 · 左掣 <b>射</b>'
+    : '左右移 · 右掣 <b>射</b>';
+$('guide').textContent = mode.id === 'move'
+  ? '只移動 · 子彈自己射 · 無時限'
+  : mode.id === 'left'
+    ? '經典單發：左掣射 · 場上只有一彈'
+    : '右掣／兩指射 · 場上只有一彈';
+
+$('btnSpeak').onclick = () => S.speak(mode.speak);
+$('btnHub').onclick = () => { location.href = './index.html'; };
+$('btnHub2').onclick = () => { location.href = './index.html'; };
+$('btnEnd').onclick = () => endRun(false);
+$('btnRetry').onclick = () => { $('win').classList.remove('on'); start(); };
+$('btnCert').onclick = printCert;
+document.getElementById('certLogo').src = S.LOGO;
+
+if (S.autoSpeak()) setTimeout(() => S.speak(mode.speak), 400);
+
+// —— input ——
+window.addEventListener('pointermove', e => {
+  const r = stage.getBoundingClientRect();
+  shipX = Math.max(0.06, Math.min(0.94, (e.clientX - r.left) / r.width));
+  shipWrap.style.left = (shipX * 100) + '%';
+});
+
+function tryLeftShoot(e) {
+  if (mode.id !== 'left' || didEnd) return;
+  if (e && e.target && e.target.closest && e.target.closest('.top,.hud')) return;
+  if (e) e.preventDefault();
+  shoot();
+}
+if (mode.id === 'left') {
+  stage.addEventListener('click', tryLeftShoot);
+  stage.addEventListener('pointerdown', e => { if (e.button === 0) tryLeftShoot(e); });
+}
+if (mode.id === 'right') {
+  S.bindRight(stage, () => { if (!didEnd) shoot(); }, '用右掣／兩指射');
+}
+
+function clearField() {
+  aliens.forEach(a => a.el && a.el.remove());
+  lasers.forEach(l => l.el && l.el.remove());
+  bunkers.forEach(b => b.el && b.el.remove());
+  if (ufo && ufo.el) ufo.el.remove();
+  aliens = []; lasers = []; bunkers = []; ufo = null;
+  if (raf) { cancelAnimationFrame(raf); raf = 0; }
+}
+
+function setHUD() {
+  $('scoreLab').textContent = score + ' 分';
+  $('waveLab').textContent = 'WAVE ' + Math.max(1, wave);
+}
+
+function spawnBunkers(n) {
+  bunkers.forEach(b => b.el && b.el.remove()); bunkers = [];
+  if (!n) return;
+  const r = stage.getBoundingClientRect();
+  const y = r.height - 105;
+  for (let i = 0; i < n; i++) {
+    const el = document.createElement('div');
+    el.className = 'bunker';
+    const x = ((i + 1) / (n + 1)) * r.width - 35;
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+    stage.appendChild(el);
+    bunkers.push({ el, x, y, w: 70, h: 34, hp: 3 });
+  }
+}
+
+function spawnWave() {
+  const r = stage.getBoundingClientRect();
+  wave += 1;
+  const spec = waveSpec(wave);
+  const gapX = Math.min(62, (r.width - 40) / Math.max(1, spec.cols));
+  const gapY = Math.min(46, Math.max(34, (r.height * 0.26) / Math.max(1, spec.rows)));
+  const totalW = gapX * (spec.cols - 1);
+  const startX = (r.width - totalW) / 2;
+  const y0 = 62 + spec.yBias;
+  aliens = [];
+  for (let row = 0; row < spec.rows; row++) {
+    for (let col = 0; col < spec.cols; col++) {
+      const el = document.createElement('div');
+      el.className = 'alien';
+      el.textContent = ROWS_FACE[Math.min(row, ROWS_FACE.length - 1)];
+      const x = startX + col * gapX;
+      const y = y0 + row * gapY;
+      el.style.left = x + 'px'; el.style.top = y + 'px';
+      stage.appendChild(el);
+      aliens.push({
+        el, x, y, alive: true, wiggle: col * 0.3 + row,
+        pts: ROW_PTS[Math.min(row, ROW_PTS.length - 1)] + Math.min(20, (wave - 1) * 2)
+      });
+    }
+  }
+  marchDir = 1; marchN = 0; pause = false;
+  spawnBunkers(spec.bunkers);
+  setHUD();
+  S.toast('WAVE ' + wave + ' · ' + spec.rows + '×' + spec.cols);
+  beat();
+}
+
+function alive() { return aliens.filter(a => a.alive).length; }
+
+function marchPeriod() {
+  const spec = waveSpec(wave || 1);
+  const a = alive();
+  const maxA = Math.max(1, spec.rows * spec.cols);
+  const t = maxA <= 1 ? 1 : (maxA - a) / (maxA - 1);
+  let p = Math.round(spec.basePeriod - t * (spec.basePeriod - spec.minPeriod));
+  if (a === 1) p = Math.max(3, spec.minPeriod - 2);
+  return Math.max(spec.minPeriod, p);
+}
+
+function beat() {
+  const a = alive();
+  const f = 160 + Math.min(400, (40 - a) * 6 + wave * 4);
+  S.tone(f, 0.04, 'square', 0.035);
+  $('heart').textContent = a <= 2 ? '♥♥ 衝刺' : (a <= 6 ? '♥ 加速' : '♥ 節奏');
+}
+
+function showWaveClear() {
+  const el = $('waveClear');
+  el.textContent = 'WAVE ' + wave + ' CLEAR!';
+  el.classList.add('on');
+  S.tone(900, 0.1, 'triangle', 0.1);
+  setTimeout(() => el.classList.remove('on'), 900);
+}
+
+function shake() {
+  stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+}
+
+function scorePop(x, y, t) {
+  const p = document.createElement('div'); p.className = 'pop'; p.textContent = t;
+  p.style.left = x + 'px'; p.style.top = y + 'px';
+  stage.appendChild(p); setTimeout(() => p.remove(), 500);
+}
+
+function canShoot() {
+  if (didEnd || pause) return false;
+  if (lasers.some(L => L.player)) return false; // classic single-shot all modes
+  if (mode.id === 'move' && Date.now() < autoCool) return false;
+  return true;
+}
+
+function shoot() {
+  if (!canShoot()) return;
+  if (mode.id === 'move') autoCool = Date.now() + 420;
+  const r = stage.getBoundingClientRect();
+  const sx = shipX * r.width;
+  shots += 1;
+  const el = document.createElement('div'); el.className = 'laser';
+  el.style.left = (sx - 2.5) + 'px'; el.style.top = (r.height - 70) + 'px';
+  stage.appendChild(el);
+  lasers.push({ el, x: sx, y: r.height - 70, dx: 0, dy: -14, player: true });
+  S.tone(920, 0.05, 'square', 0.07);
+}
+
+function addScore(pts) {
+  score += pts;
+  setHUD();
+}
+
+function killAlien(a, pts) {
+  if (!a.alive) return;
+  a.alive = false; a.el.classList.add('dead');
+  const boom = document.createElement('div'); boom.className = 'boom'; boom.textContent = '✨';
+  boom.style.left = a.x + 'px'; boom.style.top = a.y + 'px';
+  stage.appendChild(boom); setTimeout(() => boom.remove(), 360);
+  setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
+  const now = Date.now();
+  streak = (now - lastKill < 1400) ? streak + 1 : 1;
+  lastKill = now;
+  const c = $('combo');
+  if (streak >= 2) {
+    c.textContent = '連撃 ×' + streak + (streak >= 4 ? ' 🔥' : '');
+    c.classList.add('on');
+    clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('on'), 850);
+  }
+  const gain = (pts || a.pts) + (streak >= 3 ? 10 : 0);
+  addScore(gain);
+  scorePop(a.x, a.y, '+' + gain);
+  S.sfxOk(); shake(); beat();
+  if (alive() === 0) onWaveClear();
+}
+
+function onWaveClear() {
+  pause = true;
+  lasers.forEach(l => l.el && l.el.remove()); lasers = [];
+  // wave clear bonus
+  const bonus = 50 + wave * 25;
+  addScore(bonus);
+  showWaveClear();
+  S.toast('波數獎勵 +' + bonus);
+  setTimeout(() => {
+    if (didEnd) return;
+    spawnWave();
+  }, 1000);
+}
+
+function softInvasion() {
+  S.sfxBad(); S.toast('太近！退後再戰', true); shake();
+  aliens.forEach(a => {
+    if (!a.alive) return;
+    a.y = Math.max(58, a.y - 50);
+    a.el.style.top = a.y + 'px';
+  });
+  marchDir = 1;
+}
+
+function spawnUfo() {
+  if (ufo || didEnd || pause) return;
+  const r = stage.getBoundingClientRect();
+  const el = document.createElement('div'); el.className = 'ufo'; el.textContent = '🛸';
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  el.style.left = (dir > 0 ? -40 : r.width + 8) + 'px';
+  el.style.top = '42px';
+  stage.appendChild(el);
+  const table = [50, 100, 150, 300];
+  ufo = { el, x: dir > 0 ? -40 : r.width + 8, y: 42, dir, spd: 2.1 + Math.random() * 0.8, bonus: table[shots % 4], alive: true };
+}
+
+function hitBunker(L) {
+  for (const b of bunkers) {
+    if (b.hp <= 0) continue;
+    if (L.x >= b.x - 2 && L.x <= b.x + b.w + 2 && L.y >= b.y - 2 && L.y <= b.y + b.h + 6) {
+      b.hp -= 1;
+      b.el.classList.remove('d2', 'd1', 'dead');
+      if (b.hp <= 0) b.el.classList.add('dead');
+      else if (b.hp === 2) b.el.classList.add('d2');
+      else b.el.classList.add('d1');
+      return true;
+    }
+  }
+  return false;
+}
+
+function tick() {
+  if (didEnd) return;
+  const r = stage.getBoundingClientRect();
+  const defendY = r.height - 68;
+  const spec = waveSpec(wave || 1);
+
+  if (mode.id === 'move' && canShoot()) shoot();
+
+  ufoT += 1;
+  if (ufoT > 55 * 18 && Math.random() < 0.012) { ufoT = 0; spawnUfo(); }
+  if (ufo && ufo.alive) {
+    ufo.x += ufo.dir * ufo.spd;
+    ufo.el.style.left = ufo.x + 'px';
+    if (ufo.x < -70 || ufo.x > r.width + 70) { ufo.el.remove(); ufo = null; }
+  }
+
+  marchN += 1;
+  if (!pause && marchN >= marchPeriod()) {
+    marchN = 0;
+    let hitEdge = false;
+    aliens.forEach(a => {
+      if (!a.alive) return;
+      a.x += marchDir * (9 + wave * 0.5);
+      if (a.x < 6 || a.x > r.width - 34) hitEdge = true;
+    });
+    if (hitEdge) {
+      marchDir *= -1;
+      aliens.forEach(a => { if (a.alive) a.y += spec.drop; });
+    }
+    beat();
+  }
+
+  let invaded = false;
+  aliens.forEach(a => {
+    if (!a.alive) return;
+    a.wiggle += 0.07;
+    a.el.style.left = a.x + 'px';
+    a.el.style.top = (a.y + Math.sin(a.wiggle) * 2.2) + 'px';
+    if (a.y + 26 >= defendY) invaded = true;
+  });
+  if (invaded) softInvasion();
+
+  lasers = lasers.filter(L => {
+    L.x += L.dx; L.y += L.dy;
+    L.el.style.left = (L.x - 2.5) + 'px'; L.el.style.top = L.y + 'px';
+    if (L.y < -28 || L.x < -40 || L.x > r.width + 40) { L.el.remove(); return false; }
+    if (L.player && hitBunker(L)) { L.el.remove(); return false; }
+    if (L.player && ufo && ufo.alive) {
+      if (Math.abs((ufo.x + 18) - L.x) < 34 && Math.abs((ufo.y + 14) - L.y) < 26) {
+        L.el.remove();
+        addScore(ufo.bonus);
+        scorePop(ufo.x, ufo.y, 'UFO +' + ufo.bonus);
+        S.toast('神秘飛碟 +' + ufo.bonus); S.sfxOk(); shake();
+        ufo.alive = false; ufo.el.remove(); ufo = null;
+        return false;
+      }
+    }
+    for (const a of aliens) {
+      if (!a.alive) continue;
+      if (Math.abs((a.x + 16) - L.x) < 32 && Math.abs((a.y + 16) - L.y) < 28) {
+        L.el.remove(); killAlien(a); return false;
+      }
+    }
+    return true;
+  });
+
+  raf = requestAnimationFrame(tick);
+}
+
+function endRun(fromClear) {
+  if (didEnd) return;
+  didEnd = true;
+  clearField();
+  const rec = S.recordScore(modeId, score, wave);
+  const tier = S.tierFrom(score, wave);
+  const tm = S.TIER[tier];
+  S.confetti(); S.sfxWin();
+  $('winMedal').textContent = tm.medal;
+  $('winScore').textContent = score + ' 分';
+  $('winMsg').textContent = displayName + ' · ' + mode.title + ' · WAVE ' + wave +
+    (rec.isNew ? ' · 新紀錄！' : ' · 最高 ' + rec.best);
+  $('win').classList.add('on');
+  if (S.autoSpeak()) S.speak('做得好，' + score + '分');
+}
+
+function printCert() {
+  const tier = S.tierFrom(score, wave);
+  const tm = S.TIER[tier];
+  $('certTitle').textContent = tm.medal + ' ' + tm.label + ' · 太空滑鼠入侵';
+  $('certName').textContent = displayName;
+  $('certSkill').textContent = mode.emoji + ' ' + mode.skill + '（' + mode.title + '）';
+  $('certScore').textContent = score + ' 分 · WAVE ' + wave;
+  document.body.classList.add('printing');
+  const done = () => document.body.classList.remove('printing');
+  window.addEventListener('afterprint', done, { once: true });
+  setTimeout(() => window.print(), 80);
+}
+
+function start() {
+  clearField();
+  didEnd = false; score = 0; wave = 0; streak = 0; lastKill = 0;
+  shots = 0; ufoT = 0; autoCool = 0; pause = false; marchDir = 1; marchN = 0;
+  shipX = 0.5; shipWrap.style.left = '50%';
+  $('combo').classList.remove('on');
+  $('waveClear').classList.remove('on');
+  $('win').classList.remove('on');
+  setHUD();
+  spawnWave();
+  raf = requestAnimationFrame(tick);
+}
+
+start();
+</script>
+</body>
+</html>
