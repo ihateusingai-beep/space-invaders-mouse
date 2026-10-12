@@ -86,6 +86,12 @@ border-radius:50%;filter:drop-shadow(0 0 16px #00E5FF);animation:hover 1.5s ease
 .trophy-row span{opacity:.8;font-weight:900}
 .toast{position:fixed;left:50%;top:14%;transform:translateX(-50%) scale(.92);background:#fff;border:4px solid #22c55e;color:#166534;font-size:1.25rem;font-weight:900;padding:12px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:40}
 .toast.show{opacity:1;transform:translateX(-50%) scale(1)}.toast.bad{border-color:#FF6B9D;color:#9f1239}
+/* danger — alien approaching ship lane */
+.stage.danger{border:2px solid #FF6B9D88;animation:danger-pulse .4s ease-in-out infinite}
+@keyframes danger-pulse{0%,100%{border-color:#FF6B9D88}50%{border-color:#FF1744AA}}
+/* second explosion layer */
+.boom2{position:absolute;font-size:1.1rem;z-index:7;pointer-events:none;animation:boom2 .3s ease forwards}
+@keyframes boom2{0%{opacity:1;transform:scale(.4) rotate(0deg)}100%{opacity:0;transform:scale(2.2) rotate(20deg)}}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:45;overflow:hidden}
 .confetti i{position:absolute;top:-16px;width:10px;height:16px;border-radius:3px;animation:fall linear forwards}
 @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
@@ -223,6 +229,7 @@ let marchDir = 1, marchN = 0, streak = 0, lastKill = 0;
 let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0;
 let powerUps = []; // { el, x, y, type, dy }
 let shieldEnd = 0, rapidEnd = 0, boostEnd = 0, freezeEnd = 0;
+let invincibleEnd = 0; // post-hit invincibility
 
 const stage = $('stage'), shipWrap = $('shipWrap');
 const displayName = (function () {
@@ -434,6 +441,16 @@ function isRapid()    { return Date.now() < rapidEnd; }
 function isBoosted()  { return Date.now() < boostEnd; }
 function isFrozen()   { return Date.now() < freezeEnd; }
 
+function isInvincible() { return Date.now() < invincibleEnd; }
+
+// true when lowest alien is within ~1.5 steps of ship lane
+function inDanger() {
+  if (aliens.length === 0) return false;
+  const L = layout();
+  const shipTop = L.h - L.shipLane - 12;
+  return aliens.some(a => a.alive && a.y + L.alienH * 0.9 >= shipTop);
+}
+
 function marchPeriod() {
   const spec = waveSpec(wave || 1);
   const a = alive();
@@ -455,8 +472,12 @@ function showWaveClear() {
   const el = $('waveClear');
   el.textContent = 'WAVE ' + wave + ' CLEAR!';
   el.classList.add('on');
-  S.tone(900, 0.1, 'triangle', 0.1);
-  setTimeout(() => el.classList.remove('on'), 900);
+  S.confetti(); // celebration confetti
+  // ascending fanfare: C5 → E5 → G5
+  S.tone(523, 0.12, 'triangle', 0.08);
+  setTimeout(() => S.tone(659, 0.12, 'triangle', 0.08), 110);
+  setTimeout(() => S.tone(784, 0.18, 'triangle', 0.10), 220);
+  setTimeout(() => el.classList.remove('on'), 1500);
 }
 
 function shake() {
@@ -503,6 +524,10 @@ function killAlien(a, pts) {
   const boom = document.createElement('div'); boom.className = 'boom'; boom.textContent = '✨';
   boom.style.left = a.x + 'px'; boom.style.top = a.y + 'px';
   stage.appendChild(boom); setTimeout(() => boom.remove(), 360);
+  // second burst — staggered
+  const boom2 = document.createElement('div'); boom2.className = 'boom2'; boom2.textContent = '💥';
+  boom2.style.left = (a.x + 6) + 'px'; boom2.style.top = (a.y + 4) + 'px';
+  stage.appendChild(boom2); setTimeout(() => boom2.remove(), 310);
   setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
   const now = Date.now();
   streak = (now - lastKill < 1400) ? streak + 1 : 1;
@@ -608,6 +633,41 @@ function tick() {
 
   tickPowerUps();
 
+  // danger border when alien near ship lane
+  if (inDanger()) {
+    stage.classList.add('danger');
+  } else {
+    stage.classList.remove('danger');
+  }
+
+  // invincibility blink on ship
+  if (isInvincible()) {
+    const blink = Math.floor(Date.now() / 80) % 2;
+    shipWrap.style.opacity = blink ? '0.25' : '1';
+  } else {
+    shipWrap.style.opacity = '1';
+  }
+
+  // alien reaching ship lane = threat check
+  {
+    const L = layout();
+    const shipTop = L.h - L.shipLane - 8;
+    for (const a of aliens) {
+      if (!a.alive) continue;
+      if (a.y + L.alienH * 0.85 >= shipTop) {
+        a.alive = false; a.el.classList.add('dead');
+        setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
+        if (isShielded()) {
+          shieldEnd = 0; // consume shield
+          S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
+          flashScreen(); shake();
+        } else {
+          endRun(false); return;
+        }
+      }
+    }
+  }
+
   // update shield visual
   const shield = $('shipShield');
   if (isShielded()) {
@@ -643,7 +703,7 @@ function tick() {
         laser.el.remove();
         addScore(ufo.bonus);
         scorePop(ufo.x, ufo.y, 'UFO +' + ufo.bonus);
-        S.toast('神秘飛碟 +' + ufo.bonus); S.sfxOk(); shake();
+        S.toast('神秘飛碟 +' + ufo.bonus); S.sfxOk(); S.confetti(); shake();
         ufo.alive = false; ufo.el.remove(); ufo = null;
         return false;
       }
