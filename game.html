@@ -183,7 +183,7 @@ const S = SIMouse, $ = S.$;
 S.lockSEN(); S.armAudio();
 
 const params = new URLSearchParams(location.search);
-const modeId = ['move', 'left', 'right'].includes(params.get('mode')) ? params.get('mode') : 'move';
+const modeId = ['move', 'left', 'right', 'move+', 'left+', 'right+'].includes(params.get('mode')) ? params.get('mode') : 'move';
 const mode = S.modeMeta(modeId);
 
 const ROWS_FACE = ['🦑', '🦀', '🐙', '👾'];
@@ -223,7 +223,7 @@ function waveSpec(w) {
   return { rows, cols, basePeriod, minPeriod, drop, bunkers, yBias, gapY };
 }
 
-let score = 0, wave = 0, didEnd = false, shipX = 0.5;
+let score = 0, wave = 0, didEnd = false, shipX = 0.5, shipY = 0;
 let aliens = [], lasers = [], bunkers = [], raf = 0;
 let marchDir = 1, marchN = 0, streak = 0, lastKill = 0;
 let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0;
@@ -250,12 +250,22 @@ $('hint').innerHTML = mode.id === 'move'
   ? '左右移 · <b>自動射</b>'
   : mode.id === 'left'
     ? '左右移 · 左掣 <b>射</b>'
-    : '左右移 · 右掣 <b>射</b>';
+    : mode.id === 'right'
+      ? '左右移 · 右掣 <b>射</b>'
+      : mode.id === 'move+'
+        ? '自由移 · <b>自動射</b>'
+        : mode.id === 'left+'
+          ? '自由移 · 左掣 <b>射</b>'
+          : '自由移 · 右掣 <b>射</b>';
 $('guide').textContent = mode.id === 'move'
   ? '只移動 · 子彈自己射 · 無時限'
   : mode.id === 'left'
     ? '經典單發：左掣射 · 場上只有一彈'
-    : '右掣／兩指射 · 場上只有一彈';
+    : mode.id === 'right'
+      ? '右掣／兩指射 · 場上只有一彈'
+      : mode.id === 'move+'
+        ? 'XY移動 · 子彈自己射'
+        : 'XY移動 · 瞄準外星人射'
 
 $('btnSpeak').onclick = () => S.speak(mode.speak);
 $('btnHub').onclick = () => { location.href = './index.html'; };
@@ -272,6 +282,13 @@ window.addEventListener('pointermove', e => {
   const r = stage.getBoundingClientRect();
   shipX = Math.max(0.06, Math.min(0.94, (e.clientX - r.left) / r.width));
   shipWrap.style.left = (shipX * 100) + '%';
+  if (mode.freeMove) {
+    // free-move mode: ship Y tracks mouse in lower 65% of stage
+    const minY = r.height * 0.20;  // can't go above 20% from bottom
+    const maxY = r.height * 0.78;  // can't go below ship lane
+    shipY = Math.max(minY, Math.min(maxY, e.clientY - r.top));
+    shipWrap.style.top = shipY + 'px';
+  }
 });
 
 function tryLeftShoot(e) {
@@ -397,10 +414,10 @@ function tickPowerUps() {
     pu.y += pu.dy;
     pu.el.style.top = pu.y + 'px';
     const r = stage.getBoundingClientRect();
-    const shipY = r.height - 44;
+    const sy = mode.freeMove ? shipY : r.height - 44;
     const shipLeft = shipX * r.width - 28;
     // hit ship?
-    if (pu.y >= shipY - 36 && pu.y <= shipY + 10 &&
+    if (pu.y >= sy - 36 && pu.y <= sy + 10 &&
         pu.x >= shipLeft - 14 && pu.x <= shipLeft + 56) {
       activatePowerUp(pu.type);
       pu.el.remove();
@@ -504,12 +521,13 @@ function shoot() {
   if (mode.id === 'move' && !isRapid()) autoCool = Date.now() + 420;
   const r = stage.getBoundingClientRect();
   const sx = shipX * r.width;
+  const sy = mode.freeMove ? shipY : r.height - 44;
   shots += 1;
   const el = document.createElement('div'); el.className = 'laser';
-  el.style.left = (sx - 2.5) + 'px'; el.style.top = (r.height - 70) + 'px';
+  el.style.left = (sx - 2.5) + 'px'; el.style.top = (sy - 26) + 'px';
   stage.appendChild(el);
   const speed = isRapid() ? -20 : -14;
-  lasers.push({ el, x: sx, y: r.height - 70, dx: 0, dy: speed, player: true });
+  lasers.push({ el, x: sx, y: sy - 26, dx: 0, dy: speed, player: true });
   S.tone(920, 0.05, 'square', isRapid() ? 0.1 : 0.07);
 }
 
@@ -754,6 +772,10 @@ function start() {
   didEnd = false; score = 0; wave = 0; streak = 0; lastKill = 0;
   shots = 0; ufoT = 0; autoCool = 0; pause = false; marchDir = 1; marchN = 0;
   shipX = 0.5; shipWrap.style.left = '50%';
+  // init shipY once stage has real height
+  const L = layout();
+  shipY = L.h - L.shipLane;
+  shipWrap.style.top = shipY + 'px';
   $('combo').classList.remove('on');
   $('waveClear').classList.remove('on');
   $('win').classList.remove('on');
