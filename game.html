@@ -115,6 +115,22 @@ border-radius:3px;pointer-events:none}
 .drone.fading{opacity:0;transition:.4s}
 @keyframes droneBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
 .drone-laser{color:#00E5FF!important;font-size:1.4rem;line-height:1;text-shadow:0 0 4px #00E5FF,0 0 8px #00E5FF;z-index:5}
+.album-modal{width:min(560px,94vw);max-height:90vh;overflow:auto;position:relative;padding:18px 16px}
+.album-close{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;background:#eee;border:2px solid #426eb4;color:#426eb4;font-size:1.1rem;font-weight:900;cursor:pointer}
+.album-modal h2{font-size:1.4rem;margin-bottom:10px}
+.album-progress{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.album-bar{flex:1;height:14px;background:#eee;border-radius:7px;overflow:hidden;border:2px solid #426eb4}
+.album-fill{height:100%;background:linear-gradient(90deg,#FFD54F,#FF6B9D);transition:width .4s;width:0}
+.album-text{font-weight:900;color:#426eb4;font-size:.95rem;min-width:54px;text-align:right}
+.album-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.sticker-card{background:linear-gradient(135deg,#f3e5f5,#e1f5fe);border:3px solid #fff;border-radius:14px;padding:10px 6px;text-align:center;box-shadow:0 3px 8px rgba(0,0,0,.1);transition:transform .15s}
+.sticker-card.locked{background:#d0d0d0;filter:grayscale(1);opacity:.55}
+.sticker-card .sticker-icon{font-size:2.6rem;line-height:1;margin-bottom:4px;display:block}
+.sticker-card.locked .sticker-icon::after{content:'🔒';position:relative;display:inline-block;font-size:1rem;margin-left:2px}
+.sticker-card .sticker-label{font-weight:900;color:#1A237E;font-size:.85rem;line-height:1.2;margin-bottom:2px}
+.sticker-card .sticker-hint{font-size:.7rem;color:#555;line-height:1.2}
+.sticker-card.new{animation:stickerPop .6s ease}
+@keyframes stickerPop{0%{transform:scale(.5)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
 .ufo{position:absolute;top:44px;font-size:clamp(1.7rem,4.5vw,2.3rem);z-index:4;filter:drop-shadow(0 0 12px #FFD54F);pointer-events:none}
 .bunker{position:absolute;z-index:4;width:70px;height:34px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#69F0AE,#2E7D32);border:2px solid #A5D6A7}
 .bunker.d2{background:linear-gradient(180deg,#AED581,#558B2F);opacity:.85}
@@ -265,9 +281,18 @@ body.printing #certPrint{display:block!important}
     <p id="winMsg">WAVE · 最高分</p>
     <div class="row" style="margin-top:10px">
       <button class="btn ghost" id="btnRetry" type="button">再玩</button>
+      <button class="btn" id="btnStickers" type="button">🏅 成就</button>
       <button class="btn school" id="btnCert" type="button">證書</button>
       <button class="btn" id="btnHub2" type="button">主頁</button>
     </div>
+  </div>
+</div>
+<div class="overlay" id="album" style="display:none!important">
+  <div class="modal album-modal">
+    <button class="album-close" id="btnAlbumClose" type="button" aria-label="關閉">✕</button>
+    <h2>🏅 成就 Sticker Album</h2>
+    <div class="album-progress"><div class="album-bar"><div class="album-fill" id="albumFill"></div></div><div class="album-text" id="albumText">0 / 8</div></div>
+    <div class="album-grid" id="albumGrid"></div>
   </div>
 </div>
 </div>
@@ -1305,6 +1330,32 @@ function showStickerToast(def) {
   setTimeout(() => t.classList.add('in'), 30);
   setTimeout(() => { t.classList.remove('in'); setTimeout(() => t.remove(), 400); }, 3200);
 }
+
+function openAlbum() {
+  const grid = $('albumGrid');
+  grid.innerHTML = '';
+  ACH.forEach(a => {
+    const got = achUnlocked(a.id);
+    const card = document.createElement('div');
+    card.className = 'sticker-card' + (got ? '' : ' locked');
+    card.innerHTML = '<span class="sticker-icon">' + a.sticker + '</span><div class="sticker-label">' + a.label + '</div><div class="sticker-hint">' + (got ? a.hint : '???') + '</div>';
+    grid.appendChild(card);
+  });
+  const total = ACH.length;
+  const gotN = achTotal();
+  $('albumText').textContent = gotN + ' / ' + total;
+  $('albumFill').style.width = (gotN / total * 100) + '%';
+  $('album').style.display = ''; // clear inline style if any
+  $('album').classList.add('on');
+}
+
+function closeAlbum() {
+  $('album').classList.remove('on');
+  $('album').style.display = 'none';
+}
+
+$('btnStickers').onclick = openAlbum;
+$('btnAlbumClose').onclick = closeAlbum;
 </script>
 </body>
 </html>
