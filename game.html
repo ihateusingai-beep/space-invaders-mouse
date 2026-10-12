@@ -847,10 +847,6 @@ function droneKill(a) {
   drone.kills = (drone.kills || 0) + 1;
   if (drone.kills >= 10) achUnlock('drone10');
 }
-  S.sfxOk();
-  type.sound();
-  flashScreen();
-}
 
 function flashScreen() {
   const f = $('flash');
