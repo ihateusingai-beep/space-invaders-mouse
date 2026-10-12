@@ -9,7 +9,7 @@
 html,body{height:100%;font-family:"PingFang HK","Noto Sans TC",system-ui,sans-serif;color:#E0F7FA;
 background:#050B18;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overflow:hidden}
 button{font:inherit;border:none;cursor:pointer}
-.top{height:56px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;
+.top{height:clamp(48px,8vh,56px);display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;
 background:linear-gradient(180deg,#0A1628,#07101C);border-bottom:2px solid #00E5FF66}
 .who{display:flex;align-items:center;gap:8px;font-weight:900;min-width:0}
 .av{width:36px;height:36px;border-radius:50%;border:3px solid #00E5FF;display:grid;place-items:center;font-size:1.15rem;background:#102A43;flex-shrink:0}
@@ -17,12 +17,13 @@ background:linear-gradient(180deg,#0A1628,#07101C);border-bottom:2px solid #00E5
 .hint b{background:#FFD54F;color:#1A237E;padding:2px 8px;border-radius:8px}
 .icon{width:42px;height:42px;border-radius:14px;background:#102A43;border:2px solid #00E5FF66;font-size:1.05rem;font-weight:900;color:#E0F7FA}
 .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
-.hud{height:40px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
+.hud{height:clamp(34px,6vh,40px);display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 12px;
 background:#07101C;border-bottom:1px solid #00E5FF33;font-weight:900;font-size:.95rem}
 .hud .score{color:#FFD54F;font-size:1.15rem}
 .hud .wave{color:#00E5FF}
 .hud .mode-tag{color:#90CAF9;font-size:.85rem}
-.stage{height:calc(100% - 96px);position:relative;overflow:hidden;background:
+/* stage fills rest; ship lane = bottom 22%; alien band stays above */
+.stage{height:calc(100% - clamp(82px,14vh,96px));position:relative;overflow:hidden;background:
 radial-gradient(ellipse 80% 45% at 50% 0%,#1A237E55,transparent 60%),
 linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
 .stage.shake{animation:shake .2s ease}
@@ -30,10 +31,10 @@ linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
 .stage::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,229,255,.03) 3px 4px);pointer-events:none;z-index:9}
 .stars{position:absolute;inset:0;pointer-events:none;opacity:.65;
 background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial-gradient(2px 2px at 28% 42%,#fff,transparent),radial-gradient(1px 1px at 55% 12%,#fff,transparent),radial-gradient(2px 2px at 72% 38%,#A5F3FC,transparent),radial-gradient(1px 1px at 88% 22%,#fff,transparent)}
-.alien{position:absolute;font-size:clamp(1.5rem,5vw,2.3rem);line-height:1;z-index:3;filter:drop-shadow(0 0 8px #69F0AE);transition:opacity .1s,transform .1s;pointer-events:none}
+.alien{position:absolute;font-size:clamp(1.35rem,4.2vw,2.15rem);line-height:1;z-index:3;filter:drop-shadow(0 0 8px #69F0AE);transition:opacity .1s,transform .1s;pointer-events:none}
 .alien.dead{opacity:0;transform:scale(1.35) rotate(10deg)}
-.ship-wrap{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:6;pointer-events:none;display:flex;flex-direction:column;align-items:center}
-.ship{font-size:2.5rem;line-height:1;filter:drop-shadow(0 0 14px #00E5FF);animation:hover 1.5s ease-in-out infinite}
+.ship-wrap{position:absolute;bottom:clamp(10px,2.2vh,18px);left:50%;transform:translateX(-50%);z-index:6;pointer-events:none;display:flex;flex-direction:column;align-items:center}
+.ship{font-size:clamp(2rem,5.5vw,2.6rem);line-height:1;filter:drop-shadow(0 0 14px #00E5FF);animation:hover 1.5s ease-in-out infinite}
 @keyframes hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
 .ship-glow{width:42px;height:8px;border-radius:50%;background:radial-gradient(ellipse,#00E5FF88,transparent);margin-top:-3px}
 .laser{position:absolute;width:5px;height:22px;border-radius:4px;background:linear-gradient(#fff,#00E5FF 40%,#FFD54F);box-shadow:0 0 12px #00E5FF;z-index:5;pointer-events:none}
@@ -41,9 +42,10 @@ background-image:radial-gradient(1.5px 1.5px at 12% 18%,#fff,transparent),radial
 @keyframes boom{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
 .pop{position:absolute;z-index:8;font-weight:900;font-size:1rem;color:#FFD54F;text-shadow:0 0 8px #00E5FF;pointer-events:none;animation:pop .5s ease forwards}
 @keyframes pop{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-30px)}}
-.defend{position:absolute;left:6%;right:6%;bottom:58px;height:2px;background:linear-gradient(90deg,transparent,#FF6B9D99,transparent);z-index:2;pointer-events:none}
-.defend::after{content:"防禦線";position:absolute;right:0;top:-15px;font-size:.7rem;font-weight:900;color:#FF6B9D}
-.guide{position:absolute;left:10px;bottom:8px;z-index:5;background:rgba(10,22,40,.92);border:2px solid #00E5FF;border-radius:14px;padding:6px 10px;font-weight:900;max-width:58%;font-size:.9rem}
+/* ship lane marker only — aliens never cross (layout clamp) */
+.ship-lane{position:absolute;left:4%;right:4%;bottom:20%;height:1px;background:linear-gradient(90deg,transparent,#00E5FF44,transparent);z-index:2;pointer-events:none}
+.guide{position:absolute;left:10px;bottom:clamp(6px,1.5vh,10px);z-index:5;background:rgba(10,22,40,.92);border:2px solid #00E5FF;border-radius:14px;padding:6px 10px;font-weight:900;max-width:min(52%,280px);font-size:clamp(.8rem,2vw,.9rem);pointer-events:none}
+@media (max-height:700px){.guide{display:none}} /* iPad landscape / short: hide tip bar */
 .combo{position:absolute;top:10px;right:10px;z-index:6;font-size:clamp(1rem,2.8vw,1.35rem);font-weight:900;color:#FFD54F;text-shadow:0 0 10px #FF6B9D;opacity:0;transform:scale(.8);transition:.15s;pointer-events:none}
 .combo.on{opacity:1;transform:scale(1.1)}
 .heart{position:absolute;top:10px;left:10px;z-index:5;font-size:.85rem;font-weight:900;color:#80DEEA;pointer-events:none}
@@ -102,7 +104,7 @@ body.printing #certPrint{display:block!important}
   <div class="stars"></div>
   <div class="heart" id="heart">♥ 節奏</div>
   <div class="combo" id="combo">連撃 ×2</div>
-  <div class="defend"></div>
+  <div class="ship-lane" aria-hidden="true"></div>
   <div class="guide" id="guide">清晒外星人！</div>
   <div class="wave-clear" id="waveClear">WAVE CLEAR!</div>
   <div class="ship-wrap" id="shipWrap"><div class="ship">🚀</div><div class="ship-glow"></div></div>
@@ -151,17 +153,35 @@ const mode = S.modeMeta(modeId);
 const ROWS_FACE = ['🦑', '🦀', '🐙', '👾'];
 const ROW_PTS = [30, 20, 10, 10];
 
-/** Wave blueprint — deepens forever */
+/** Layout metrics — PC + iPad safe bands (aliens never enter ship lane) */
+function layout() {
+  const r = stage.getBoundingClientRect();
+  const h = r.height, w = r.width;
+  const shipLane = h * 0.22;          // bottom 22% = ship only
+  const bunkerY = h - shipLane - h * 0.06;
+  const alienMaxY = h * 0.58;         // aliens hard-cap (~58% down)
+  const alienTop = Math.max(48, h * 0.08);
+  const alienH = Math.max(28, Math.min(44, w * 0.055));
+  return { w, h, shipLane, bunkerY, alienMaxY, alienTop, alienH };
+}
+
+/** Wave blueprint — deepens forever, sized to viewport */
 function waveSpec(w) {
-  // w starts 1
-  const rows = Math.min(5, 2 + Math.floor((w - 1) / 2));
-  const cols = Math.min(8, 4 + Math.floor((w - 1) / 2));
-  const basePeriod = Math.max(10, 36 - w * 2);
-  const minPeriod = Math.max(4, 12 - Math.floor(w / 2));
-  const drop = Math.min(22, 12 + w);
-  const bunkers = w >= 3 ? Math.min(4, 2 + Math.floor((w - 3) / 2)) : 0;
-  const yBias = Math.min(56, (w - 1) * 6); // lower start each wave
-  return { rows, cols, basePeriod, minPeriod, drop, bunkers, yBias };
+  const L = layout();
+  const short = L.h < 520; // iPad landscape / short window
+  const maxRows = short ? 3 : 4;
+  const maxCols = short ? 6 : (L.w < 700 ? 6 : 8);
+  const rows = Math.min(maxRows, 2 + Math.floor((w - 1) / 3));
+  const cols = Math.min(maxCols, 4 + Math.floor((w - 1) / 2));
+  const basePeriod = Math.max(12, 36 - w * 2);
+  const minPeriod = Math.max(5, 12 - Math.floor(w / 2));
+  const drop = Math.min(14, 8 + Math.floor(w / 2)); // small steps only
+  const bunkers = w >= 3 ? Math.min(3, 2 + Math.floor((w - 3) / 3)) : 0;
+  // slight lower start, but matrix must still fit under alienMaxY
+  const gapY = Math.min(L.alienH + 6, (L.alienMaxY - L.alienTop - 20) / Math.max(1, rows));
+  const maxBias = Math.max(0, L.alienMaxY - L.alienTop - gapY * (rows - 1) - L.alienH - 8);
+  const yBias = Math.min(maxBias, (w - 1) * 4);
+  return { rows, cols, basePeriod, minPeriod, drop, bunkers, yBias, gapY };
 }
 
 let score = 0, wave = 0, didEnd = false, shipX = 0.5;
@@ -243,27 +263,29 @@ function setHUD() {
 function spawnBunkers(n) {
   bunkers.forEach(b => b.el && b.el.remove()); bunkers = [];
   if (!n) return;
-  const r = stage.getBoundingClientRect();
-  const y = r.height - 105;
+  const L = layout();
+  const y = L.bunkerY;
+  const bw = Math.min(70, Math.max(52, L.w * 0.1));
   for (let i = 0; i < n; i++) {
     const el = document.createElement('div');
     el.className = 'bunker';
-    const x = ((i + 1) / (n + 1)) * r.width - 35;
+    el.style.width = bw + 'px';
+    const x = ((i + 1) / (n + 1)) * L.w - bw / 2;
     el.style.left = x + 'px'; el.style.top = y + 'px';
     stage.appendChild(el);
-    bunkers.push({ el, x, y, w: 70, h: 34, hp: 3 });
+    bunkers.push({ el, x, y, w: bw, h: 34, hp: 3 });
   }
 }
 
 function spawnWave() {
-  const r = stage.getBoundingClientRect();
+  const L = layout();
   wave += 1;
   const spec = waveSpec(wave);
-  const gapX = Math.min(62, (r.width - 40) / Math.max(1, spec.cols));
-  const gapY = Math.min(46, Math.max(34, (r.height * 0.26) / Math.max(1, spec.rows)));
+  const gapX = Math.min(L.alienH + 18, (L.w - 48) / Math.max(1, spec.cols));
+  const gapY = spec.gapY;
   const totalW = gapX * (spec.cols - 1);
-  const startX = (r.width - totalW) / 2;
-  const y0 = 62 + spec.yBias;
+  const startX = (L.w - totalW) / 2;
+  const y0 = L.alienTop + spec.yBias;
   aliens = [];
   for (let row = 0; row < spec.rows; row++) {
     for (let col = 0; col < spec.cols; col++) {
@@ -271,7 +293,8 @@ function spawnWave() {
       el.className = 'alien';
       el.textContent = ROWS_FACE[Math.min(row, ROWS_FACE.length - 1)];
       const x = startX + col * gapX;
-      const y = y0 + row * gapY;
+      // hard clamp into alien band
+      const y = Math.min(L.alienMaxY - L.alienH, y0 + row * gapY);
       el.style.left = x + 'px'; el.style.top = y + 'px';
       stage.appendChild(el);
       aliens.push({
@@ -386,16 +409,6 @@ function onWaveClear() {
   }, 1000);
 }
 
-function softInvasion() {
-  S.sfxBad(); S.toast('太近！退後再戰', true); shake();
-  aliens.forEach(a => {
-    if (!a.alive) return;
-    a.y = Math.max(58, a.y - 50);
-    a.el.style.top = a.y + 'px';
-  });
-  marchDir = 1;
-}
-
 function spawnUfo() {
   if (ufo || didEnd || pause) return;
   const r = stage.getBoundingClientRect();
@@ -425,9 +438,10 @@ function hitBunker(L) {
 
 function tick() {
   if (didEnd) return;
-  const r = stage.getBoundingClientRect();
-  const defendY = r.height - 68;
+  const L = layout();
+  const r = { width: L.w, height: L.h, left: 0 };
   const spec = waveSpec(wave || 1);
+  const maxY = L.alienMaxY - L.alienH;
 
   if (mode.id === 'move' && canShoot()) shoot();
 
@@ -436,7 +450,7 @@ function tick() {
   if (ufo && ufo.alive) {
     ufo.x += ufo.dir * ufo.spd;
     ufo.el.style.left = ufo.x + 'px';
-    if (ufo.x < -70 || ufo.x > r.width + 70) { ufo.el.remove(); ufo = null; }
+    if (ufo.x < -70 || ufo.x > L.w + 70) { ufo.el.remove(); ufo = null; }
   }
 
   marchN += 1;
@@ -446,33 +460,35 @@ function tick() {
     aliens.forEach(a => {
       if (!a.alive) return;
       a.x += marchDir * (9 + wave * 0.5);
-      if (a.x < 6 || a.x > r.width - 34) hitEdge = true;
+      if (a.x < 6 || a.x > L.w - 34) hitEdge = true;
     });
     if (hitEdge) {
       marchDir *= -1;
-      aliens.forEach(a => { if (a.alive) a.y += spec.drop; });
+      // drop only while under hard cap — never enter ship lane
+      aliens.forEach(a => {
+        if (!a.alive) return;
+        if (a.y + spec.drop <= maxY) a.y += spec.drop;
+      });
     }
     beat();
   }
 
-  let invaded = false;
   aliens.forEach(a => {
     if (!a.alive) return;
+    if (a.y > maxY) a.y = maxY; // safety clamp
     a.wiggle += 0.07;
     a.el.style.left = a.x + 'px';
     a.el.style.top = (a.y + Math.sin(a.wiggle) * 2.2) + 'px';
-    if (a.y + 26 >= defendY) invaded = true;
   });
-  if (invaded) softInvasion();
 
-  lasers = lasers.filter(L => {
-    L.x += L.dx; L.y += L.dy;
-    L.el.style.left = (L.x - 2.5) + 'px'; L.el.style.top = L.y + 'px';
-    if (L.y < -28 || L.x < -40 || L.x > r.width + 40) { L.el.remove(); return false; }
-    if (L.player && hitBunker(L)) { L.el.remove(); return false; }
-    if (L.player && ufo && ufo.alive) {
-      if (Math.abs((ufo.x + 18) - L.x) < 34 && Math.abs((ufo.y + 14) - L.y) < 26) {
-        L.el.remove();
+  lasers = lasers.filter(laser => {
+    laser.x += laser.dx; laser.y += laser.dy;
+    laser.el.style.left = (laser.x - 2.5) + 'px'; laser.el.style.top = laser.y + 'px';
+    if (laser.y < -28 || laser.x < -40 || laser.x > L.w + 40) { laser.el.remove(); return false; }
+    if (laser.player && hitBunker(laser)) { laser.el.remove(); return false; }
+    if (laser.player && ufo && ufo.alive) {
+      if (Math.abs((ufo.x + 18) - laser.x) < 34 && Math.abs((ufo.y + 14) - laser.y) < 26) {
+        laser.el.remove();
         addScore(ufo.bonus);
         scorePop(ufo.x, ufo.y, 'UFO +' + ufo.bonus);
         S.toast('神秘飛碟 +' + ufo.bonus); S.sfxOk(); shake();
@@ -482,8 +498,8 @@ function tick() {
     }
     for (const a of aliens) {
       if (!a.alive) continue;
-      if (Math.abs((a.x + 16) - L.x) < 32 && Math.abs((a.y + 16) - L.y) < 28) {
-        L.el.remove(); killAlien(a); return false;
+      if (Math.abs((a.x + 16) - laser.x) < 32 && Math.abs((a.y + 16) - laser.y) < 28) {
+        laser.el.remove(); killAlien(a); return false;
       }
     }
     return true;
