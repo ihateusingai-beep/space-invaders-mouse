@@ -110,6 +110,11 @@ border-radius:3px;pointer-events:none}
 .boss-hp.low{border-color:#FF1744;animation:bossLow .5s ease-in-out infinite}
 .boss-hp.low .boss-hp-fill{background:linear-gradient(90deg,#FF1744,#FF6B9D)}
 @keyframes bossLow{0%,100%{box-shadow:0 4px 12px rgba(255,23,68,.4)}50%{box-shadow:0 4px 18px rgba(255,23,68,.8)}}
+.drone{position:absolute;width:32px;height:32px;z-index:6;pointer-events:none;filter:drop-shadow(0 0 6px #00E5FF);animation:droneBob 1.6s ease-in-out infinite}
+.drone svg{width:100%;height:100%}
+.drone.fading{opacity:0;transition:.4s}
+@keyframes droneBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
+.drone-laser{color:#00E5FF!important;font-size:1.4rem;line-height:1;text-shadow:0 0 4px #00E5FF,0 0 8px #00E5FF;z-index:5}
 .ufo{position:absolute;top:44px;font-size:clamp(1.7rem,4.5vw,2.3rem);z-index:4;filter:drop-shadow(0 0 12px #FFD54F);pointer-events:none}
 .bunker{position:absolute;z-index:4;width:70px;height:34px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#69F0AE,#2E7D32);border:2px solid #A5D6A7}
 .bunker.d2{background:linear-gradient(180deg,#AED581,#558B2F);opacity:.85}
@@ -641,8 +646,9 @@ function spawnBoss() {
   beat();
 }
 
-function bossHit(b, dmg) {
+function bossHit(b, dmg, laser) {
   if (!b._boss) return false;
+  if (laser && laser._drone) b._droneKilled = true;
   b._hp -= dmg;
   b.el.classList.add('hit-flash');
   setTimeout(() => b.el.classList.remove('hit-flash'), 80);
@@ -655,6 +661,7 @@ function bossHit(b, dmg) {
   }
   if (b._hp <= 0) {
     b.alive = false;
+    if (b._droneKilled) droneKill(b);
     b.el.classList.add('dead');
     setTimeout(() => { if (b.el.parentNode) b.el.remove(); }, 200);
     if (b._hpBar && b._hpBar.parentNode) b._hpBar.remove();
@@ -685,6 +692,8 @@ const PU_TYPES = [
   { id: 'rapid',  emoji: '⚡', label: '連射', color: '#FF6B9D', dur: 6000,  sound: () => S.tone(660, 0.08, 'sine', 0.12) },
   { id: 'score',  emoji: '💎', label: '雙倍', color: '#FFD54F', dur: 10000, sound: () => S.tone(784, 0.1, 'triangle', 0.14) },
   { id: 'freeze', emoji: '❄️', label: '暫停', color: '#A5F3FC', dur: 5000,  sound: () => S.tone(330, 0.15, 'sine', 0.12) },
+  { id: 'drone',  emoji: '🤖', label: '小伙伴', color: '#A5F3FC', dur: 20000, sound: () => S.tone(880, 0.1, 'square', 0.10) },
+];
 ];
 
 function spawnPowerUp(x, y) {
@@ -733,7 +742,87 @@ function activatePowerUp(type) {
   } else if (type.id === 'freeze') {
     freezeEnd = now + type.dur;
     S.toast('❄️ 暫停 ' + (type.dur / 1000) + ' 秒');
+  } else if (type.id === 'drone') {
+    spawnDrone();
+    S.toast('🤖 小伙伴出動！');
   }
+}
+
+/* ── 小伙伴 drone ── */
+let drone = null; // { el, offX, end, cd, kills }
+
+function spawnDrone() {
+  if (drone && drone.el && drone.el.parentNode) drone.el.remove();
+  const el = document.createElement('div');
+  el.className = 'drone';
+  el.innerHTML = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><ellipse cx="16" cy="16" rx="12" ry="8" fill="#00E5FF" stroke="#fff" stroke-width="1.5"/><circle cx="16" cy="16" r="3" fill="#FFD54F"/><rect x="2" y="13" width="3" height="6" fill="#00E5FF"/><rect x="27" y="13" width="3" height="6" fill="#00E5FF"/><circle cx="16" cy="6" r="2" fill="#FF6B9D"/></svg>';
+  stage.appendChild(el);
+  drone = {
+    el,
+    offX: 50, // offset from ship (right side)
+    offY: -8, // slightly above ship
+    end: Date.now() + 20000,
+    cd: 0,
+    kills: 0
+  };
+}
+
+function tickDrone(L) {
+  if (!drone || !drone.el || !drone.el.parentNode) return;
+  if (Date.now() > drone.end) {
+    drone.el.classList.add('fading');
+    setTimeout(() => { if (drone && drone.el && drone.el.parentNode) drone.el.remove(); }, 400);
+    drone = null;
+    return;
+  }
+  // position relative to ship
+  const r = stage.getBoundingClientRect();
+  const shipLeft = shipX * r.width;
+  const shipTop = mode.freeMove ? shipY : r.height - 44;
+  const targetX = shipLeft + drone.offX;
+  const targetY = shipTop + drone.offY;
+  drone.el.style.left = targetX + 'px';
+  drone.el.style.top = targetY + 'px';
+  // auto-fire
+  drone.cd -= 1;
+  if (drone.cd <= 0) {
+    // find nearest alive alien
+    let best = null, bestDist = Infinity;
+    aliens.forEach(a => {
+      if (!a.alive) return;
+      const ax = a._boss ? a.x + (a._w || 100) / 2 : a.x + 16;
+      const ay = a._boss ? a.y + (a._h || 80) / 2 : a.y + 16;
+      const d = Math.hypot(ax - targetX, ay - targetY);
+      if (d < bestDist) { bestDist = d; best = a; }
+    });
+    if (best) {
+      const ax = best._boss ? best.x + (best._w || 100) / 2 : best.x + 16;
+      const ay = best._boss ? best.y + (best._h || 80) / 2 : best.y + 16;
+      // spawn drone laser
+      const le = document.createElement('div');
+      le.className = 'laser drone-laser';
+      le.textContent = '•';
+      le.style.left = (targetX + 12) + 'px';
+      le.style.top = (targetY + 8) + 'px';
+      stage.appendChild(le);
+      const dx = ax - (targetX + 12);
+      const dy = ay - (targetY + 8);
+      const len = Math.hypot(dx, dy) || 1;
+      const spd = 6;
+      lasers.push({ el: le, x: targetX + 12, y: targetY + 8, dx: dx / len * spd, dy: dy / len * spd, age: 0, player: true, _drone: true });
+      drone.cd = 36; // ~600ms cooldown at 60fps
+      S.tone(660, 0.04, 'sine', 0.06);
+    } else {
+      drone.cd = 12;
+    }
+  }
+}
+
+function droneKill(a) {
+  if (!drone) return;
+  drone.kills = (drone.kills || 0) + 1;
+  if (drone.kills >= 10) achUnlock('drone10');
+}
   S.sfxOk();
   type.sound();
   flashScreen();
@@ -857,6 +946,7 @@ function addScore(pts) {
 function killAlien(a, pts) {
   if (!a.alive) return;
   a.alive = false;
+  if (a._droneKilled) droneKill(a);
   // hit-flash then death
   a.el.classList.add('hit-flash');
   setTimeout(() => { a.el.classList.remove('hit-flash'); a.el.classList.add('dead'); }, 80);
@@ -991,6 +1081,7 @@ function tick() {
   });
 
   tickPowerUps();
+  tickDrone(L);
 
   // danger border when alien near ship lane
   if (inDanger()) {
@@ -1080,8 +1171,9 @@ function tick() {
       const hitH = a._boss ? ah * 0.42 : 18;
       if (Math.abs(ax - laser.x) < hitW && Math.abs(ay - laser.y) < hitH) {
         laser.el.remove();
+        if (laser._drone) a._droneKilled = true;
         if (a._boss) {
-          if (bossHit(a, 1)) {
+          if (bossHit(a, 1, laser)) {
             // boss died, clear remaining lasers near it
             return false;
           }
