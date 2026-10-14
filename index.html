@@ -26,14 +26,21 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .name-row{display:flex;gap:8px;margin-top:10px}
 .name-row input{flex:1;min-height:48px;border-radius:14px;border:3px solid #426eb4;padding:8px 12px;font-size:1.1rem;font-weight:800;color:#3D2B5A}
 .modes{display:grid;gap:12px}
-.mode{display:flex;align-items:center;gap:12px;text-align:left;padding:14px;border-radius:18px;background:linear-gradient(135deg,#0A1628,#1A237E);color:#E0F7FA;border:3px solid #00E5FF66;min-height:88px;box-shadow:0 8px 20px rgba(10,22,40,.25)}
+.mode{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:left;padding:14px;border-radius:18px;background:linear-gradient(135deg,#0A1628,#1A237E);color:#E0F7FA;border:3px solid #00E5FF66;min-height:88px;box-shadow:0 8px 20px rgba(10,22,40,.25);cursor:pointer}
 .mode:active{transform:scale(.98)}
+.mode .row{display:flex;align-items:center;gap:12px}
 .mode .em{font-size:2.2rem;width:56px;text-align:center}
 .mode .body{flex:1}
 .mode .title{font-size:1.2rem;font-weight:900}
 .mode .tag{font-size:.9rem;opacity:.85;font-weight:800;margin-top:2px}
 .mode .best{font-size:.85rem;font-weight:900;color:#FFD54F;margin-top:4px}
 .mode .go{font-weight:900;background:#FFD54F;color:#1A237E;padding:10px 14px;border-radius:999px;font-size:1rem}
+.ship-row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.ship-pick{flex:1;min-width:0;min-height:56px;border-radius:12px;background:rgba(255,255,255,.08);border:2px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:4px 2px;font-weight:900;color:#E0F7FA;transition:.15s;cursor:pointer}
+.ship-pick .se{font-size:1.3rem;line-height:1}
+.ship-pick .sn{font-size:.7rem;line-height:1.1;opacity:.85}
+.ship-pick.on{border-color:#FFD54F;background:rgba(255,213,79,.18);box-shadow:0 0 0 2px #FFD54F44}
+.ship-pick:active{transform:scale(.96)}
 .tips{font-weight:800;line-height:1.5;font-size:.95rem;opacity:.85}
 .tips b{color:#426eb4}
 .chk{display:flex;align-items:center;gap:8px;font-weight:800;margin-top:8px}
@@ -84,6 +91,7 @@ document.getElementById('logo').src = S.LOGO;
 
 let who = S.loadWho() || S.WHO[0];
 S.saveWho(who);
+let currentShip = S.loadShip();
 const nameEl = document.getElementById('studentName');
 nameEl.value = localStorage.getItem('si_mouse_name') || '';
 nameEl.addEventListener('change', () => S.saveName(nameEl.value));
@@ -114,15 +122,34 @@ function renderModes() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'mode';
+    const shipPicks = S.SHIPS.map(s =>
+      '<div class="ship-pick' + (s.id === currentShip ? ' on' : '') + '" data-ship="' + s.id + '">' +
+        '<span class="se">' + s.emoji + '</span>' +
+        '<span class="sn">' + s.name + '</span>' +
+      '</div>'
+    ).join('');
     btn.innerHTML =
-      '<div class="em">' + m.emoji + '</div>' +
-      '<div class="body"><div class="title">' + m.title + '</div>' +
-      '<div class="tag">' + m.tag + '</div>' +
-      '<div class="best">最高 ' + b.best + ' 分 · WAVE ' + b.waves + '</div></div>' +
-      '<span class="go">開始</span>';
+      '<div class="row">' +
+        '<div class="em">' + m.emoji + '</div>' +
+        '<div class="body"><div class="title">' + m.title + '</div>' +
+        '<div class="tag">' + m.tag + '</div>' +
+        '<div class="best">最高 ' + b.best + ' 分 · WAVE ' + b.waves + '</div></div>' +
+        '<span class="go">開始</span>' +
+      '</div>' +
+      '<div class="ship-row">' + shipPicks + '</div>';
+    // ship pick — change selection, do NOT start game
+    btn.querySelectorAll('.ship-pick').forEach(el => {
+      el.onclick = (e) => {
+        e.stopPropagation();
+        currentShip = el.getAttribute('data-ship');
+        S.saveShip(currentShip);
+        btn.querySelectorAll('.ship-pick').forEach(x => x.classList.toggle('on', x.getAttribute('data-ship') === currentShip));
+      };
+    });
+    // start game on card click (but not on ship pick)
     btn.onclick = () => {
       S.saveName(nameEl.value);
-      location.href = S.gameUrl(m.id);
+      location.href = S.gameUrl(m.id, currentShip);
     };
     box.appendChild(btn);
   });

@@ -135,6 +135,42 @@ border-radius:3px;pointer-events:none}
 .shield-count{display:inline-block;margin-left:8px;font-size:.75rem;color:#00E5FF;font-weight:700}
 .bonus-active{animation:bonusPulse 0.5s ease-in-out infinite alternate}
 @keyframes bonusPulse{0%{text-shadow:0 0 6px #FFD54F}100%{text-shadow:0 0 18px #FF6B9D,0 0 30px #FFD54F}}
+
+/* ── ship theme overrides (color per ship) ── */
+.ship-themed{transition:filter .3s, background .3s}
+body.ship-whale .ship-themed{filter:drop-shadow(0 0 14px #00E5FF)}
+body.ship-swallow .ship-themed{filter:drop-shadow(0 0 14px #FF6B9D)}
+body.ship-turtle .ship-themed{filter:drop-shadow(0 0 14px #69F0AE)}
+body.ship-phoenix .ship-themed{filter:drop-shadow(0 0 14px #FF8C00)}
+.ship-tag{font-size:.85rem;font-weight:900;padding:2px 6px;border-radius:6px;color:#fff}
+body.ship-whale .ship-tag{background:#00BCD4}
+body.ship-swallow .ship-tag{background:#FF6B9D}
+body.ship-turtle .ship-tag{background:#4CAF50}
+body.ship-phoenix .ship-tag{background:#FF8C00}
+.lives{display:inline-flex;gap:3px;margin-left:8px;font-size:1rem;line-height:1;vertical-align:middle}
+.lives .heart-icon{filter:drop-shadow(0 0 4px #FF6B9D);transition:opacity .2s,filter .2s}
+.lives .heart-icon.lost{opacity:.18;filter:grayscale(1) drop-shadow(0 0 0 transparent)}
+.skill-btn{position:absolute;right:12px;bottom:80px;z-index:8;width:84px;height:84px;border-radius:50%;
+  border:4px solid currentColor;background:rgba(10,22,40,.85);color:#00E5FF;display:grid;place-items:center;
+  font-size:2.2rem;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 0 18px currentColor,inset 0 0 10px rgba(0,0,0,.3);transition:transform .12s, opacity .2s;
+  font-weight:900}
+.skill-btn.ready{animation:skillReady 1.6s ease-in-out infinite}
+@keyframes skillReady{0%,100%{box-shadow:0 0 18px currentColor}50%{box-shadow:0 0 32px currentColor, 0 0 48px currentColor}}
+.skill-btn.cooldown{color:#555!important;background:rgba(20,30,50,.85);box-shadow:none;cursor:not-allowed;animation:none;opacity:.6}
+.skill-btn.cooldown::after{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(rgba(0,0,0,.7) var(--cd, 0%), transparent 0);pointer-events:none}
+.skill-btn .cd-num{position:absolute;font-size:.7rem;bottom:6px;left:0;right:0;text-align:center;color:#fff;font-weight:900;letter-spacing:1px}
+.skill-btn .skill-label{position:absolute;font-size:.55rem;top:2px;left:0;right:0;text-align:center;color:currentColor;opacity:.7;letter-spacing:1px}
+.skill-btn.pressed{transform:scale(.9)}
+@media (max-height:600px){.skill-btn{width:64px;height:64px;font-size:1.7rem;bottom:60px}}
+.skill-burst{position:absolute;z-index:7;pointer-events:none;border-radius:50%;background:radial-gradient(circle, var(--c) 0%, transparent 70%);animation:burst .6s ease-out forwards}
+@keyframes burst{0%{transform:scale(0);opacity:1}100%{transform:scale(2.5);opacity:0}}
+.dash-trail{position:absolute;z-index:5;pointer-events:none;border-radius:50%;background:radial-gradient(circle, var(--c) 0%, transparent 70%);animation:dashTrail .45s ease-out forwards}
+@keyframes dashTrail{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(.4)}}
+.wall-bar{position:absolute;z-index:5;pointer-events:none;border-radius:6px;border:3px solid #69F0AE;background:linear-gradient(180deg, rgba(105,240,174,.35), rgba(105,240,174,.15));box-shadow:0 0 16px #69F0AE88}
+.flame-laser{background:linear-gradient(180deg,#FFEB3B,#FF6D00 60%,#B71C1C)!important;box-shadow:0 0 14px #FF8C00,0 0 28px #FF6B9D!important}
+.burn-dot{position:absolute;border-radius:50%;background:radial-gradient(circle, #FFEB3B, #FF6D00 60%, transparent 80%);pointer-events:none;z-index:3;animation:burnFade .8s ease-out forwards}
+@keyframes burnFade{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(.3)}}
 .album-modal{width:min(560px,94vw);max-height:90vh;overflow:auto;position:relative;padding:18px 16px}
 .album-close{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;background:#eee;border:2px solid #426eb4;color:#426eb4;font-size:1.1rem;font-weight:900;cursor:pointer}
 .album-modal h2{font-size:1.4rem;margin-bottom:10px}
@@ -229,6 +265,8 @@ body.printing #certPrint{display:block!important}
   <span class="mode-tag" id="modeTag">模式</span>
   <span class="score" id="scoreLab">0 分</span>
   <span class="wave" id="waveLab">WAVE 1</span>
+  <span class="ship-tag" id="shipTag">🐋</span>
+  <span class="lives" id="lives"></span>
 </div>
 <div class="stage" id="stage">
   <div class="stars"></div>
@@ -239,35 +277,14 @@ body.printing #certPrint{display:block!important}
   <div class="wave-clear" id="waveClear">WAVE CLEAR!</div>
   <div class="pause-overlay" id="pauseOverlay"><div class="pause-card"><div class="pause-icon">⏸</div><div class="pause-title">已暫停</div><button class="btn school" id="btnResume" type="button">▶ 繼續</button></div></div>
   <div class="trophy-row" id="trophies"></div>
-  <div class="ship-wrap" id="shipWrap"><div class="ship">
-    <svg id="shipSvg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="sg" cx="50%" cy="35%" r="60%">
-          <stop offset="0%" stop-color="#E0F7FA" stop-opacity="1"/>
-          <stop offset="40%" stop-color="#00BCD4" stop-opacity="0.9"/>
-          <stop offset="100%" stop-color="#006064" stop-opacity="0.8"/>
-        </radialGradient>
-        <filter id="shipGlow">
-          <feGaussianBlur stdDeviation="2" result="blur"/>
-          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <!-- hull body -->
-      <polygon points="32,4 44,20 44,36 38,42 26,42 20,36 20,20" fill="url(#sg)" stroke="#00E5FF" stroke-width="1.5" filter="url(#shipGlow)"/>
-      <!-- cockpit -->
-      <ellipse cx="32" cy="16" rx="6" ry="8" fill="#B2EBF2" opacity="0.85"/>
-      <ellipse cx="32" cy="15" rx="3" ry="4" fill="#E0F7FA" opacity="0.7"/>
-      <!-- side wings -->
-      <polygon points="20,28 10,38 14,40 20,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>
-      <polygon points="44,28 54,38 50,40 44,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>
-      <!-- wing detail lines -->
-      <line x1="12" y1="37" x2="18" y2="31" stroke="#4DD0E1" stroke-width="1" opacity="0.7"/>
-      <line x1="52" y1="37" x2="46" y2="31" stroke="#4DD0E1" stroke-width="1" opacity="0.7"/>
-      <!-- engine nozzle -->
-      <rect x="26" y="40" width="12" height="8" rx="3" fill="#006064"/>
-      <rect x="28" y="41" width="8" height="4" rx="2" fill="#004D40" opacity="0.8"/>
-    </svg>
-  </div><div class="ship-glow"></div>
+  <div class="skill-btn ready" id="skillBtn" tabindex="0" role="button" aria-label="戰機技能">
+    <span class="skill-label" id="skillLabel">技能</span>
+    <span id="skillIcon">✨</span>
+    <span class="cd-num" id="skillCdNum" style="display:none"></span>
+  </div>
+  <div class="ship-wrap" id="shipWrap"><div class="ship ship-themed" id="shipEl">
+    <!-- ship SVG injected by JS based on current ship -->
+  </div><div class="ship-glow ship-themed" id="shipGlow"></div>
   <div id="thrustOuter"></div>
   <div id="thrust">
     <svg viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg">
@@ -475,6 +492,67 @@ let eliteCount = 0;   // total elite aliens spawned this wave
 let miniBossSpawned = false; // mini-boss spawned for current wave
 let trackingShotActive = false; // one tracking shot per wave (wave ≥7)
 let spreadShotActive = false;  // one spread shot per eligible wave (wave ≥10, every 3)
+let ship = null;             // current ship data (loaded from URL/localStorage)
+let shipLife = 0;            // current HP (decremented on hit; 0 = dead)
+let shipMaxLife = 0;         // max HP
+let skillCdEnd = 0;          // timestamp when skill is ready again
+let dashEnd = 0;             // swallow dash: timestamp when dash ends
+let wallEnd = 0;             // turtle wall: timestamp when wall disappears
+let wallHitsLeft = 0;        // turtle wall: remaining hits absorbed
+
+/* ── 4 ship SVG templates (kept simple, color-themed) ── */
+const SHIP_SVGS = {
+  // Whale — cyan classic (existing design)
+  whale: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="sgW" cx="50%" cy="35%" r="60%"><stop offset="0%" stop-color="#E0F7FA"/><stop offset="40%" stop-color="#00BCD4"/><stop offset="100%" stop-color="#006064"/></radialGradient></defs>' +
+    '<polygon points="32,4 44,20 44,36 38,42 26,42 20,36 20,20" fill="url(#sgW)" stroke="#00E5FF" stroke-width="1.5"/>' +
+    '<ellipse cx="32" cy="16" rx="6" ry="8" fill="#B2EBF2" opacity=".85"/>' +
+    '<polygon points="20,28 10,38 14,40 20,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
+    '<polygon points="44,28 54,38 50,40 44,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
+    '<rect x="26" y="40" width="12" height="8" rx="3" fill="#006064"/>' +
+    '</svg>',
+  // Swallow — pink dart with swept wings
+  swallow: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="sgS" cx="50%" cy="30%" r="65%"><stop offset="0%" stop-color="#FCE4EC"/><stop offset="40%" stop-color="#FF6B9D"/><stop offset="100%" stop-color="#880E4F"/></radialGradient></defs>' +
+    '<polygon points="32,2 42,18 42,30 38,38 26,38 22,30 22,18" fill="url(#sgS)" stroke="#FF80AB" stroke-width="1.5"/>' +
+    '<polygon points="32,2 38,16 32,20 26,16" fill="#FCE4EC"/>' +
+    '<ellipse cx="32" cy="14" rx="4" ry="5" fill="#1A1A2E" opacity=".85"/>' +
+    '<polygon points="22,22 6,32 14,34 22,28" fill="#AD1457" stroke="#FF80AB" stroke-width="1"/>' +
+    '<polygon points="42,22 58,32 50,34 42,28" fill="#AD1457" stroke="#FF80AB" stroke-width="1"/>' +
+    '<polygon points="22,32 14,42 22,38" fill="#FF80AB" opacity=".7"/>' +
+    '<polygon points="42,32 50,42 42,38" fill="#FF80AB" opacity=".7"/>' +
+    '<rect x="26" y="38" width="12" height="6" rx="2" fill="#880E4F"/>' +
+    '</svg>',
+  // Turtle — green wide armored
+  turtle: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="sgT" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#E8F5E9"/><stop offset="40%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#1B5E20"/></radialGradient></defs>' +
+    '<path d="M16,12 L48,12 L52,20 L52,42 L48,46 L16,46 L12,42 L12,20 Z" fill="url(#sgT)" stroke="#69F0AE" stroke-width="2"/>' +
+    '<ellipse cx="32" cy="28" rx="14" ry="10" fill="#1B5E20" opacity=".4"/>' +
+    '<ellipse cx="32" cy="16" rx="5" ry="6" fill="#A5D6A7" opacity=".9"/>' +
+    '<rect x="30" y="14" width="4" height="4" rx="1" fill="#1A1A2E"/>' +
+    '<rect x="14" y="22" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
+    '<rect x="46" y="22" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
+    '<rect x="14" y="34" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
+    '<rect x="46" y="34" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
+    '<rect x="24" y="46" width="6" height="4" rx="1" fill="#1B5E20"/>' +
+    '<rect x="34" y="46" width="6" height="4" rx="1" fill="#1B5E20"/>' +
+    '<rect x="26" y="50" width="12" height="3" rx="1" fill="#2E7D32"/>' +
+    '</svg>',
+  // Phoenix — orange bird with spread wings
+  phoenix: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><radialGradient id="sgP" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFFDE7"/><stop offset="40%" stop-color="#FF8C00"/><stop offset="100%" stop-color="#BF360C"/></radialGradient></defs>' +
+    '<path d="M32,2 L40,16 L36,28 L32,40 L28,28 L24,16 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1.5"/>' +
+    '<path d="M32,8 L36,18 L32,24 L28,18 Z" fill="#FFFDE7" opacity=".8"/>' +
+    '<ellipse cx="32" cy="14" rx="3" ry="4" fill="#1A1A2E" opacity=".85"/>' +
+    '<path d="M24,18 L8,12 L14,22 L20,24 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1"/>' +
+    '<path d="M40,18 L56,12 L50,22 L44,24 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1"/>' +
+    '<path d="M22,28 L10,30 L18,32 L24,30 Z" fill="#FF6D00" opacity=".85"/>' +
+    '<path d="M42,28 L54,30 L46,32 L40,30 Z" fill="#FF6D00" opacity=".85"/>' +
+    '<path d="M28,36 L24,44 L30,40 Z" fill="#FFD54F"/>' +
+    '<path d="M36,36 L40,44 L34,40 Z" fill="#FFD54F"/>' +
+    '<rect x="28" y="40" width="8" height="6" rx="2" fill="#BF360C"/>' +
+    '</svg>'
+};
 
 const stage = $('stage'), shipWrap = $('shipWrap');
 const displayName = (function () {
@@ -511,6 +589,188 @@ $('guide').textContent = mode.id === 'move'
       : mode.id === 'move+'
         ? 'XY移動 · 子彈自己射'
         : 'XY移動 · 瞄準外星人射'
+
+/* ── ship system ── */
+function initShip() {
+  const id = params.get('ship') || S.loadShip();
+  ship = S.shipMeta(id);
+  document.body.classList.remove('ship-whale','ship-swallow','ship-turtle','ship-phoenix');
+  document.body.classList.add('ship-' + ship.id);
+  S.saveShip(ship.id);
+  $('shipEl').innerHTML = SHIP_SVGS[ship.id];
+  $('shipTag').textContent = ship.emoji + ' ' + ship.name;
+  $('skillIcon').textContent = ship.skill.emoji;
+  $('skillLabel').textContent = ship.skill.name;
+  $('skillBtn').style.color = ship.skill.color;
+}
+
+function renderLives() {
+  const el = $('lives');
+  el.innerHTML = '';
+  for (let i = 0; i < shipMaxLife; i++) {
+    const h = document.createElement('span');
+    h.className = 'heart-icon' + (i >= shipLife ? ' lost' : '');
+    h.textContent = '♥';
+    el.appendChild(h);
+  }
+}
+
+function skillReady() { return Date.now() >= skillCdEnd && !didEnd && !pause; }
+function skillProgress() {
+  // 0..1 — how much of CD has elapsed
+  const cd = ship.skill.cd;
+  return Math.max(0, Math.min(1, 1 - (skillCdEnd - Date.now()) / cd));
+}
+
+function updateSkillBtn() {
+  const btn = $('skillBtn');
+  const cdNum = $('skillCdNum');
+  if (skillReady()) {
+    btn.classList.add('ready');
+    btn.classList.remove('cooldown');
+    btn.style.setProperty('--cd', '0%');
+    cdNum.style.display = 'none';
+  } else {
+    btn.classList.remove('ready');
+    btn.classList.add('cooldown');
+    const left = Math.max(0, skillCdEnd - Date.now());
+    const pct = (left / ship.skill.cd) * 100;
+    btn.style.setProperty('--cd', pct + '%');
+    cdNum.style.display = 'block';
+    cdNum.textContent = (left / 1000).toFixed(1) + 's';
+  }
+}
+
+/* ── 4 ship skills ── */
+function useShipSkill() {
+  if (!skillReady()) return;
+  skillCdEnd = Date.now() + ship.skill.cd;
+  S.toast(ship.skill.emoji + ' ' + ship.skill.name);
+  S.tone(660, 0.12, 'triangle', 0.16);
+  if (ship.skill.id === 'burst') skillBurst();
+  else if (ship.skill.id === 'dash') skillDash();
+  else if (ship.skill.id === 'wall') skillWall();
+  else if (ship.skill.id === 'ring') skillRing();
+}
+
+// Whale 三連射 — fires 3 bullets in ±15° spread
+function skillBurst() {
+  const r = stage.getBoundingClientRect();
+  const sx = shipX * r.width;
+  const sy = mode.freeMove ? shipY : r.height - 44;
+  const baseSpeed = isRapid() ? -20 : -14;
+  [-0.22, 0, 0.22].forEach(angle => {
+    const el = document.createElement('div');
+    el.className = 'laser';
+    el.style.left = (sx - 2.5) + 'px';
+    el.style.top  = (sy - 26) + 'px';
+    stage.appendChild(el);
+    lasers.push({ el, x: sx, y: sy - 26, dx: Math.sin(angle) * Math.abs(baseSpeed), dy: Math.cos(angle) * baseSpeed, player: true, born: Date.now() });
+  });
+  S.tone(880, 0.12, 'triangle', 0.14);
+  // visual burst
+  spawnSkillBurst(sx, sy - 26, ship.skill.color);
+}
+
+// Swallow 瞬閃 — 300ms invincible + 100px dash
+function skillDash() {
+  dashEnd = Date.now() + 300;
+  invincibleEnd = Math.max(invincibleEnd, dashEnd);
+  // trail
+  const r = stage.getBoundingClientRect();
+  const sx = shipX * r.width;
+  const sy = mode.freeMove ? shipY : r.height - 44;
+  for (let i = 0; i < 4; i++) {
+    setTimeout(() => {
+      const t = document.createElement('div');
+      t.className = 'dash-trail';
+      t.style.cssText = 'left:' + (sx - 32) + 'px; top:' + (sy - 32) + 'px; width:64px; height:64px; --c:' + ship.skill.color;
+      stage.appendChild(t);
+      setTimeout(() => t.remove(), 500);
+    }, i * 70);
+  }
+  S.tone(1200, 0.08, 'sine', 0.14);
+  S.tone(800, 0.15, 'sawtooth', 0.12);
+}
+
+// Turtle 能量盾牆 — 3s wall in front of ship, blocks 5 hits
+function skillWall() {
+  wallEnd = Date.now() + 3000;
+  wallHitsLeft = 5;
+  S.tone(220, 0.15, 'sine', 0.14);
+  setTimeout(() => S.tone(220, 0.15, 'sine', 0.14), 120);
+  S.toast('🛡️ 盾牆 5 發');
+}
+
+function tickWall(L) {
+  if (Date.now() >= wallEnd) {
+    if (wallEl && wallEl.parentNode) wallEl.remove();
+    wallEl = null;
+    return;
+  }
+  if (!wallEl || !wallEl.parentNode) {
+    wallEl = document.createElement('div');
+    wallEl.className = 'wall-bar';
+    stage.appendChild(wallEl);
+  }
+  const shipTop = L.h - L.shipLane - 12;
+  const w = 14, h = 120;
+  wallEl.style.width = w + 'px';
+  wallEl.style.height = h + 'px';
+  wallEl.style.left = (shipX * L.w - w/2) + 'px';
+  wallEl.style.top = (shipTop - h + 10) + 'px';
+  wallEl.textContent = wallHitsLeft + '';
+  wallEl.style.color = '#fff';
+  wallEl.style.textAlign = 'center';
+  wallEl.style.fontSize = '.8rem';
+  wallEl.style.fontWeight = '900';
+  wallEl.style.lineHeight = h + 'px';
+  wallEl.style.textShadow = '0 0 4px #000';
+}
+let wallEl = null;
+
+// Phoenix 烈焰環 — 360° 8-bullet burst around ship
+function skillRing() {
+  const r = stage.getBoundingClientRect();
+  const sx = shipX * r.width;
+  const sy = mode.freeMove ? shipY : r.height - 44;
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const spd = 5;
+    const el = document.createElement('div');
+    el.className = 'laser flame-laser';
+    el.style.left = (sx - 4) + 'px';
+    el.style.top = (sy - 16) + 'px';
+    stage.appendChild(el);
+    lasers.push({ el, x: sx, y: sy - 16, dx: Math.cos(angle) * spd, dy: Math.sin(angle) * spd, age: 0, player: true, born: Date.now(), _ring: true });
+  }
+  spawnSkillBurst(sx, sy, ship.skill.color);
+  S.tone(440, 0.1, 'square', 0.14);
+  setTimeout(() => S.tone(330, 0.12, 'square', 0.14), 80);
+  S.toast('💥 烈焰環！');
+}
+
+function spawnSkillBurst(cx, cy, color) {
+  const b = document.createElement('div');
+  b.className = 'skill-burst';
+  b.style.cssText = 'left:' + (cx - 40) + 'px; top:' + (cy - 40) + 'px; width:80px; height:80px; --c:' + color;
+  stage.appendChild(b);
+  setTimeout(() => b.remove(), 650);
+}
+
+/* ── virtual button + Enter key trigger ── */
+$('skillBtn').onclick = () => useShipSkill();
+$('skillBtn').onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); useShipSkill(); } };
+window.addEventListener('keydown', e => {
+  if (didEnd) return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    useShipSkill();
+  }
+});
+
+initShip();
 
 $('btnSpeak').onclick = () => S.speak(mode.speak);
 $('btnHub').onclick = () => { location.href = './index.html'; };
@@ -952,6 +1212,26 @@ function droneKill(a) {
   if (drone.kills >= 10) achUnlock('drone10');
 }
 
+/* ── doHit: ship life system (1 ship = shipMaxLife HP) ── */
+function doHit() {
+  if (didEnd) return;
+  shipLife -= 1;
+  renderLives();
+  // brief invincibility frames after losing a life
+  invincibleEnd = Date.now() + 1200;
+  S.tone(180, 0.2, 'sawtooth', 0.18);
+  S.sfxBad();
+  flashScreen();
+  shake();
+  if (shipLife <= 0) {
+    S.toast('💥 戰機擊毀！');
+    setTimeout(() => endRun(false), 400);
+  } else {
+    S.toast('💔 -1 命 (' + shipLife + '/' + shipMaxLife + ')');
+    spawnParticles(shipX * stage.getBoundingClientRect().width, stage.getBoundingClientRect().height - 44, ship.color);
+  }
+}
+
 function flashScreen() {
   const f = $('flash');
   f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 80);
@@ -1035,17 +1315,28 @@ const HOLD_COOLDOWN = 220; // ms between shots while held
 function shoot() {
   if (!canShoot()) return;
   const manualMode = mode.id === 'left' || mode.id === 'left+' || mode.id === 'right' || mode.id === 'right+';
-  if (manualMode) manualCool = Date.now() + HOLD_COOLDOWN;
-  else autoCool = Date.now() + 420;
+  // ship.fireRate: higher = faster fire (lower cooldown)
+  const fireRateMult = ship ? ship.fireRate : 1;
+  if (manualMode) manualCool = Date.now() + HOLD_COOLDOWN / fireRateMult;
+  else autoCool = Date.now() + 420 / fireRateMult;
   const r = stage.getBoundingClientRect();
   const sx = shipX * r.width;
   const sy = mode.freeMove ? shipY : r.height - 44;
   shots += 1;
-  const el = document.createElement('div'); el.className = 'laser';
-  el.style.left = (sx - 2.5) + 'px'; el.style.top = (sy - 26) + 'px';
-  stage.appendChild(el);
   const speed = isRapid() ? -20 : -14;
-  lasers.push({ el, x: sx, y: sy - 26, dx: 0, dy: speed, player: true, born: Date.now() });
+  // bullet pattern: single | double | flame
+  const bt = ship ? ship.bulletType : 'single';
+  const offsets = bt === 'double' ? [-10, 10] : [0];
+  const pierce = bt === 'flame';
+  const laserClass = 'laser' + (bt === 'flame' ? ' flame-laser' : '');
+  offsets.forEach(ox => {
+    const el = document.createElement('div');
+    el.className = laserClass;
+    el.style.left = (sx - 2.5 + ox) + 'px';
+    el.style.top  = (sy - 26) + 'px';
+    stage.appendChild(el);
+    lasers.push({ el, x: sx + ox, y: sy - 26, dx: 0, dy: speed, player: true, born: Date.now(), _pierce: pierce, _hit: pierce ? new Set() : null });
+  });
   S.tone(920, 0.05, 'square', isRapid() ? 0.1 : 0.07);
 }
 
@@ -1271,6 +1562,23 @@ function tickAlienLasers(L) {
         return false;
       }
     }
+    // hit wall (Turtle skill) — placed in front of ship
+    if (Date.now() < wallEnd && wallHitsLeft > 0) {
+      const wallX = shipX * L.w;
+      const wallY = (L.h - L.shipLane - 12) - 110; // wall top
+      if (shot.x >= wallX - 8 && shot.x <= wallX + 8 &&
+          shot.y >= wallY && shot.y <= wallY + 120) {
+        shot.el.remove();
+        wallHitsLeft--;
+        S.tone(330, 0.08, 'sine', 0.12);
+        spawnParticles(shot.x, shot.y, '#69F0AE');
+        if (wallHitsLeft <= 0) {
+          wallEnd = 0;
+          S.toast('💥 盾牆粉碎！');
+        }
+        return false;
+      }
+    }
     // hit ship
     const shipTop = L.h - L.shipLane - 12;
     const shipLeft = shipX * L.w - 28;
@@ -1285,7 +1593,7 @@ function tickAlienLasers(L) {
       } else if (shieldCount > 0) {
         // shield capacity: consume one shield charge
         shieldCount--;
-        setHUD();
+        renderLives();
         S.toast('🛡️ ×' + shieldCount + ' 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
         flashScreen(); shake();
         spawnParticles(shot.x, shipTop, '#00E5FF');
@@ -1403,8 +1711,12 @@ function tick() {
           shieldEnd = 0; // consume shield
           S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
           flashScreen(); shake();
-        } else {
-          endRun(false); return;
+        } else if (shieldCount > 0) {
+          shieldCount--; renderLives();
+          S.toast('🛡️ ×' + shieldCount + ' 擋住！');
+          flashScreen(); shake();
+        } else if (!isInvincible()) {
+          doHit();
         }
       }
     }
@@ -1426,6 +1738,8 @@ function tick() {
   }
 
   updateHUDTrophies();
+  updateSkillBtn();
+  tickWall(L);
 
   aliens.forEach(a => {
     if (!a.alive) return;
@@ -1466,15 +1780,31 @@ function tick() {
       // AABB overlap between laser segment and alien hit box
       if (maxX >= ax - hitW && minX <= ax + hitW &&
           maxY >= ay - hitH && minY <= ay + hitH) {
-        laser.el.remove();
+        // pierce (flame) lasers skip aliens already hit
+        if (laser._pierce && laser._hit && laser._hit.has(a)) continue;
         if (laser._drone) a._droneKilled = true;
+        let didKill = false;
         if (a._boss) {
-          if (bossHit(a, 1, laser)) {
-            return false;
-          }
+          if (bossHit(a, 1, laser)) didKill = true;
         } else {
           killAlien(a);
+          didKill = true;
         }
+        // piercing: keep laser alive, mark alien as hit, leave burn dot
+        if (laser._pierce) {
+          laser._hit && laser._hit.add(a);
+          // burn dot at hit position
+          const bd = document.createElement('div');
+          bd.className = 'burn-dot';
+          bd.style.left = (ax - 8) + 'px';
+          bd.style.top  = (ay - 8) + 'px';
+          bd.style.width = '16px';
+          bd.style.height = '16px';
+          stage.appendChild(bd);
+          setTimeout(() => bd.remove(), 800);
+          continue; // check next alien
+        }
+        laser.el.remove();
         return false;
       }
     }
@@ -1519,7 +1849,15 @@ function start() {
   didEnd = false; userPaused = false; setPausedUI(false);
   score = 0; wave = 0; streak = 0; lastKill = 0;
   shots = 0; ufoT = 0; autoCool = 0; manualCool = 0; pause = false; marchDir = 1; marchN = 0;
-  shieldCount = 3; bonusTimeEnd = 0;
+  // ship stats: HP, shield cap, fire rate, bullet type
+  shipMaxLife = ship ? ship.hp : 3;
+  shipLife = shipMaxLife;
+  shieldCount = ship ? ship.shield : 3;
+  bonusTimeEnd = 0;
+  // reset skill state
+  skillCdEnd = 0; dashEnd = 0; wallEnd = 0; wallHitsLeft = 0;
+  if (wallEl && wallEl.parentNode) { wallEl.remove(); wallEl = null; }
+  invincibleEnd = 0;
   fireHold = false;
   shipX = 0.5; shipWrap.style.left = '50%';
   // init shipY once stage has real height
@@ -1529,6 +1867,7 @@ function start() {
   $('combo').classList.remove('on');
   $('waveClear').classList.remove('on');
   $('win').classList.remove('on');
+  renderLives();
   setHUD();
   // wait 1 frame so flex stage has real height before spawn
   requestAnimationFrame(() => {

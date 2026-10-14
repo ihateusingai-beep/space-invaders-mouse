@@ -15,6 +15,48 @@
     { id: 'right+', title: '自由＋右掣', tag: 'XY移 + 右掣射', emoji: '👆', skill: '右掣發射', speak: '自由移動，右掣射', freeMove: true }
   ];
 
+  // 4 ships, each with unique stats + 1 unique skill
+  var SHIPS = [
+    {
+      id: 'whale', name: '鯨鯊', emoji: '🐋', color: '#00BCD4', glow: '#00E5FF',
+      desc: '均衡型', tag: '新手友善', shipClass: 'balanced',
+      hp: 3, shield: 3, fireRate: 1.0, speed: 1.0, bulletType: 'single',
+      skill: { id: 'burst', name: '三連射', emoji: '✨', desc: '射出 3 發扇形子彈', cd: 6000, color: '#00E5FF' }
+    },
+    {
+      id: 'swallow', name: '燕子', emoji: '🐦', color: '#FF6B9D', glow: '#FF80AB',
+      desc: '速攻型', tag: '高手挑戰', shipClass: 'speed',
+      hp: 2, shield: 2, fireRate: 1.6, speed: 1.4, bulletType: 'single',
+      skill: { id: 'dash', name: '瞬閃', emoji: '⚡', desc: '0.3s 無敵 + 100px dash', cd: 5000, color: '#FF6B9D' }
+    },
+    {
+      id: 'turtle', name: '烏龜', emoji: '🐢', color: '#4CAF50', glow: '#69F0AE',
+      desc: '防禦型', tag: '安全至上', shipClass: 'tank',
+      hp: 4, shield: 4, fireRate: 0.7, speed: 0.7, bulletType: 'double',
+      skill: { id: 'wall', name: '能量盾牆', emoji: '🛡️', desc: '前方 3s 擋 5 彈', cd: 12000, color: '#69F0AE' }
+    },
+    {
+      id: 'phoenix', name: '鳳凰', emoji: '🔥', color: '#FF8C00', glow: '#FFB74D',
+      desc: '燃燒型', tag: '高 combo', shipClass: 'special',
+      hp: 3, shield: 3, fireRate: 0.9, speed: 1.0, bulletType: 'flame',
+      skill: { id: 'ring', name: '烈焰環', emoji: '💥', desc: '360° 8 發爆發', cd: 10000, color: '#FF8C00' }
+    }
+  ];
+
+  function shipMeta(id) {
+    return SHIPS.find(function (s) { return s.id === id; }) || SHIPS[0];
+  }
+
+  function saveShip(s) {
+    try { localStorage.setItem('si_mouse_ship', typeof s === 'string' ? s : s.id); } catch (_) {}
+  }
+  function loadShip() {
+    try {
+      var id = localStorage.getItem('si_mouse_ship');
+      return shipMeta(id || 'whale').id;
+    } catch (_) { return 'whale'; }
+  }
+
   var WHO = [
     { id: 'cat', emoji: '🐱', name: '小貓' },
     { id: 'dog', emoji: '🐶', name: '小狗' },
@@ -131,9 +173,11 @@
     return MODES.find(function (m) { return m.id === id; }) || MODES[0];
   }
 
-  function gameUrl(mode) {
+  function gameUrl(mode, ship) {
     var q = new URLSearchParams();
     q.set('mode', mode || 'move');
+    if (ship) q.set('ship', ship);
+    else q.set('ship', loadShip());
     var n = (localStorage.getItem(LS_NAME) || '').trim();
     if (n) q.set('name', n);
     var w = loadWho();
@@ -189,9 +233,9 @@
   }
 
   global.SIMouse = {
-    LOGO, MODES, WHO, TIER, $,
+    LOGO, MODES, SHIPS, WHO, TIER, $,
     loadScores, bestOf, recordScore, tierFrom,
-    displayName, loadWho, saveWho, saveName,
+    displayName, loadWho, saveWho, saveName, shipMeta, saveShip, loadShip,
     autoSpeak, setAutoSpeak, armAudio, tone, sfxOk, sfxWin, sfxBad, speak,
     lockSEN, modeMeta, gameUrl, bindRight, toast, confetti, ctx
   };
