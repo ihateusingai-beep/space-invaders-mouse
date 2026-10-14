@@ -32,6 +32,8 @@ linear-gradient(180deg,#050B18 0%,#0D1B2A 55%,#06101C 100%)}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
 .stage::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(0,229,255,.03) 3px 4px);pointer-events:none;z-index:9}
 .stars,.stars2,.stars3{position:absolute;inset:0;pointer-events:none}
+.nebula{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.nebula svg{width:100%;height:100%;display:block}
 .stars{opacity:.5;animation:starScroll 18s linear infinite;
 background-image:radial-gradient(1.5px 1.5px at 12% 18%,#E0F7FA,transparent),radial-gradient(2px 2px at 28% 42%,#fff,transparent),radial-gradient(1px 1px at 55% 12%,#fff,transparent),radial-gradient(2px 2px at 72% 38%,#A5F3FC,transparent),radial-gradient(1px 1px at 88% 22%,#fff,transparent),radial-gradient(1.5px 1.5px at 5% 60%,#fff,transparent),radial-gradient(1px 1px at 40% 80%,#B2EBF2,transparent),radial-gradient(2px 2px at 65% 55%,#fff,transparent),radial-gradient(1px 1px at 95% 75%,#fff,transparent)}
 .stars2{opacity:.3;animation:starScroll 28s linear infinite;
@@ -282,6 +284,51 @@ body.printing #certPrint{display:block!important}
   <span class="lives" id="lives"></span>
 </div>
 <div class="stage" id="stage">
+  <div class="nebula" id="nebula" aria-hidden="true">
+    <svg viewBox="0 0 1024 768" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+      <defs>
+        <radialGradient id="neb1" cx="20%" cy="25%" r="40%"><stop offset="0%" stop-color="#FF6B9D" stop-opacity=".35"/><stop offset="50%" stop-color="#9C27B0" stop-opacity=".15"/><stop offset="100%" stop-color="#9C27B0" stop-opacity="0"/></radialGradient>
+        <radialGradient id="neb2" cx="75%" cy="70%" r="50%"><stop offset="0%" stop-color="#4DD0E1" stop-opacity=".3"/><stop offset="50%" stop-color="#2196F3" stop-opacity=".12"/><stop offset="100%" stop-color="#2196F3" stop-opacity="0"/></radialGradient>
+        <radialGradient id="neb3" cx="55%" cy="20%" r="35%"><stop offset="0%" stop-color="#FFD54F" stop-opacity=".18"/><stop offset="50%" stop-color="#FF6F00" stop-opacity=".08"/><stop offset="100%" stop-color="#FF6F00" stop-opacity="0"/></radialGradient>
+        <radialGradient id="planet" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFB74D"/><stop offset="50%" stop-color="#FF6F00"/><stop offset="85%" stop-color="#BF360C"/><stop offset="100%" stop-color="#4A0E0A"/></radialGradient>
+        <radialGradient id="moon" cx="40%" cy="40%" r="60%"><stop offset="0%" stop-color="#90CAF9"/><stop offset="60%" stop-color="#1976D2"/><stop offset="100%" stop-color="#0D47A1"/></radialGradient>
+      </defs>
+      <!-- 3 nebula clouds -->
+      <ellipse cx="200" cy="200" rx="400" ry="300" fill="url(#neb1)"/>
+      <ellipse cx="800" cy="550" rx="500" ry="350" fill="url(#neb2)"/>
+      <ellipse cx="560" cy="160" rx="350" ry="200" fill="url(#neb3)"/>
+      <!-- distant planet (bottom-right) with rings -->
+      <ellipse cx="900" cy="620" rx="120" ry="20" fill="none" stroke="#FFB74D" stroke-width="2" opacity=".4"/>
+      <ellipse cx="900" cy="620" rx="140" ry="26" fill="none" stroke="#FF6F00" stroke-width="1" opacity=".3"/>
+      <circle cx="900" cy="620" r="60" fill="url(#planet)"/>
+      <ellipse cx="900" cy="620" rx="110" ry="14" fill="none" stroke="#FFD54F" stroke-width="1.5" opacity=".6"/>
+      <!-- planet detail (crater/band) -->
+      <ellipse cx="900" cy="605" rx="55" ry="6" fill="#FF6F00" opacity=".4"/>
+      <ellipse cx="900" cy="640" rx="50" ry="4" fill="#4A0E0A" opacity=".6"/>
+      <circle cx="880" cy="610" r="3" fill="#FFB74D" opacity=".6"/>
+      <circle cx="920" cy="635" r="2" fill="#FFB74D" opacity=".6"/>
+      <!-- small moon (top-left) -->
+      <circle cx="120" cy="120" r="22" fill="url(#moon)"/>
+      <circle cx="115" cy="115" r="3" fill="#0D47A1" opacity=".5"/>
+      <circle cx="125" cy="125" r="2" fill="#0D47A1" opacity=".5"/>
+      <circle cx="120" cy="122" r="1.5" fill="#0D47A1" opacity=".4"/>
+      <!-- distant star clusters (varying opacity) -->
+      <circle cx="80" cy="400" r="1" fill="#FFFFFF" opacity=".8"/>
+      <circle cx="150" cy="500" r="0.8" fill="#80DEEA" opacity=".7"/>
+      <circle cx="300" cy="600" r="1" fill="#FFFFFF" opacity=".6"/>
+      <circle cx="450" cy="500" r="0.7" fill="#FF80AB" opacity=".7"/>
+      <circle cx="600" cy="600" r="0.8" fill="#FFFFFF" opacity=".5"/>
+      <circle cx="700" cy="400" r="1" fill="#FFEB3B" opacity=".6"/>
+      <circle cx="850" cy="300" r="0.7" fill="#FFFFFF" opacity=".7"/>
+      <circle cx="950" cy="450" r="0.8" fill="#80DEEA" opacity=".6"/>
+      <circle cx="50" cy="700" r="1" fill="#FFFFFF" opacity=".5"/>
+      <circle cx="400" cy="700" r="0.7" fill="#FF80AB" opacity=".6"/>
+      <circle cx="780" cy="100" r="0.8" fill="#FFFFFF" opacity=".7"/>
+      <circle cx="240" cy="80" r="0.6" fill="#FFEB3B" opacity=".6"/>
+      <circle cx="500" cy="350" r="0.6" fill="#FFFFFF" opacity=".5"/>
+      <circle cx="650" cy="200" r="0.7" fill="#80DEEA" opacity=".6"/>
+    </svg>
+  </div>
   <div class="stars"></div>
   <div class="heart" id="heart">♥ 節奏</div>
   <div class="combo" id="combo">連撃 ×2</div>
