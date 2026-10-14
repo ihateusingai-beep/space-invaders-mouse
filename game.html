@@ -2079,7 +2079,8 @@ function tickAlienLasers(L) {
     if (shot.y >= shipTop && shot.y <= shipTop + 30 &&
         shot.x >= shipLeft && shot.x <= shipLeft + 56) {
       shot.el.remove();
-      if (isShielded()) {
+      // check ACTIVE shield timer first (NOT charges — isShielded() also true for charges)
+      if (Date.now() < shieldEnd) {
         shieldEnd = 0;
         S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
         flashScreen(); shake();
@@ -2087,6 +2088,7 @@ function tickAlienLasers(L) {
       } else if (shieldCount > 0) {
         // shield capacity: consume one shield charge
         shieldCount--;
+        if (shieldCount === 0) shieldEnd = 0;
         renderLives();
         S.toast('🛡️ ×' + shieldCount + ' 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
         flashScreen(); shake();
@@ -2201,12 +2203,15 @@ function tick() {
         a.alive = false; a.el.classList.add('dead');
         setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
         if (a._hpBar && a._hpBar.parentNode) a._hpBar.remove();
-        if (isShielded()) {
+        // check ACTIVE shield timer first (NOT isShielded() — that includes charges)
+        if (Date.now() < shieldEnd) {
           shieldEnd = 0; // consume shield
           S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
           flashScreen(); shake();
         } else if (shieldCount > 0) {
-          shieldCount--; renderLives();
+          shieldCount--;
+          if (shieldCount === 0) shieldEnd = 0;
+          renderLives();
           S.toast('🛡️ ×' + shieldCount + ' 擋住！');
           flashScreen(); shake();
         } else if (!isInvincible()) {
