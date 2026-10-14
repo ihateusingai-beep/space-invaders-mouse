@@ -209,7 +209,8 @@ body.ship-phoenix .ship-tag{background:#FF8C00}
 .ship-shield.on{opacity:1;animation:shield-pulse 1.2s ease-in-out infinite}
 @keyframes shield-pulse{0%,100%{box-shadow:0 0 16px #00E5FF88,inset 0 0 12px #00E5FF33}50%{box-shadow:0 0 28px #00E5FF,inset 0 0 20px #00E5FF55}}
 /* power-up drops */
-.pu{position:absolute;font-size:clamp(1.3rem,3.5vw,1.7rem);z-index:5;pointer-events:none;filter:drop-shadow(0 0 8px currentColor);padding:4px;border-radius:10px;background:rgba(0,0,0,.55);border:2px solid currentColor}
+.pu{position:absolute;font-size:clamp(1.3rem,3.5vw,1.7rem);z-index:5;pointer-events:none;filter:drop-shadow(0 0 8px currentColor);padding:4px;border-radius:10px;background:rgba(0,0,0,.55);border:2px solid currentColor;line-height:0}
+.pu svg{width:1em;height:1em;display:block}
 @keyframes pu-glow{0%,100%{filter:drop-shadow(0 0 6px currentColor) brightness(1)}50%{filter:drop-shadow(0 0 14px currentColor) brightness(1.2)}}
 .pu{animation:pu-glow 0.8s ease-in-out infinite}
 .pu-score{color:#FFD54F;border-color:#FFD54F}
@@ -1329,12 +1330,83 @@ function bossHit(b, dmg, laser) {
 function alive() { return aliens.filter(a => a.alive).length; }
 
 /* ── power-ups ── */
+// power-up icon SVGs (32x32 viewBox)
+const PU_ICON_SHIELD = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs><radialGradient id="piS" cx="50%" cy="30%" r="60%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="50%" stop-color="#00E5FF"/><stop offset="100%" stop-color="#006064"/></radialGradient></defs>' +
+  '<path d="M16 2 L28 6 L28 14 Q28 24 16 30 Q4 24 4 14 L4 6 Z" fill="url(#piS)" stroke="#FFFFFF" stroke-width="1.2"/>' +
+  '<path d="M16 4 L26 7 L26 14 Q26 22 16 28 Q6 22 6 14 L6 7 Z" fill="none" stroke="#80DEEA" stroke-width=".6" opacity=".7"/>' +
+  '<path d="M16 8 L20 14 L16 22 L12 14 Z" fill="#FFFFFF" opacity=".7"/>' +
+  '<circle cx="16" cy="14" r="1.5" fill="#00E5FF"/>' +
+'</svg>';
+const PU_ICON_RAPID = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs><linearGradient id="piR" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="50%" stop-color="#FF80AB"/><stop offset="100%" stop-color="#880E4F"/></linearGradient></defs>' +
+  '<path d="M18 2 L8 18 L14 18 L11 30 L24 12 L17 12 Z" fill="url(#piR)" stroke="#FFFFFF" stroke-width="1"/>' +
+  '<path d="M18 2 L8 18 L14 18 L11 30" fill="none" stroke="#FFE0B2" stroke-width=".6" opacity=".7"/>' +
+  '<path d="M22 4 L15 15 L18 15 L16 24" fill="none" stroke="#FFFFFF" stroke-width=".4" opacity=".5"/>' +
+'</svg>';
+const PU_ICON_SCORE = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs><radialGradient id="piG" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FFFDE7"/><stop offset="40%" stop-color="#FFD54F"/><stop offset="80%" stop-color="#FF8F00"/><stop offset="100%" stop-color="#BF360C"/></radialGradient></defs>' +
+  '<path d="M16 2 L28 11 L24 24 L16 30 L8 24 L4 11 Z" fill="url(#piG)" stroke="#FFFFFF" stroke-width="1.2"/>' +
+  '<path d="M16 5 L25 12 L22 22 L16 27 L10 22 L7 12 Z" fill="none" stroke="#FFE082" stroke-width=".6" opacity=".6"/>' +
+  '<path d="M16 8 L20 13 L18 18 L14 18 L12 13 Z" fill="#FFFFFF" opacity=".5"/>' +
+  '<circle cx="16" cy="15" r="1.5" fill="#FFFDE7"/>' +
+  // sparkle
+  '<path d="M27 5 L28 7 L30 8 L28 9 L27 11 L26 9 L24 8 L26 7 Z" fill="#FFFFFF" opacity=".8"/>' +
+'</svg>';
+const PU_ICON_FREEZE = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs><radialGradient id="piF" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="50%" stop-color="#A5F3FC"/><stop offset="100%" stop-color="#0277BD"/></radialGradient></defs>' +
+  // 6 main arms
+  '<g stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none">' +
+    '<line x1="16" y1="3" x2="16" y2="9"/><line x1="16" y1="23" x2="16" y2="29"/>' +
+    '<line x1="3" y1="16" x2="9" y2="16"/><line x1="23" y1="16" x2="29" y2="16"/>' +
+    '<line x1="6" y1="6" x2="11" y2="11"/><line x1="21" y1="21" x2="26" y2="26"/>' +
+    '<line x1="26" y1="6" x2="21" y2="11"/><line x1="11" y1="21" x2="6" y2="26"/>' +
+  '</g>' +
+  // 6 branch tips (small forks)
+  '<g stroke="#A5F3FC" stroke-width="1.2" stroke-linecap="round" fill="none">' +
+    '<line x1="13" y1="5" x2="16" y2="9"/><line x1="19" y1="5" x2="16" y2="9"/>' +
+    '<line x1="13" y1="27" x2="16" y2="23"/><line x1="19" y1="27" x2="16" y2="23"/>' +
+    '<line x1="5" y1="13" x2="9" y2="16"/><line x1="5" y1="19" x2="9" y2="16"/>' +
+    '<line x1="27" y1="13" x2="23" y2="16"/><line x1="27" y1="19" x2="23" y2="16"/>' +
+    '<line x1="8" y1="8" x2="11" y2="11"/><line x1="8" y1="8" x2="11" y2="11"/>' +
+    '<line x1="24" y1="24" x2="21" y2="21"/><line x1="24" y1="24" x2="21" y2="21"/>' +
+    '<line x1="24" y1="8" x2="21" y2="11"/><line x1="24" y1="8" x2="21" y2="11"/>' +
+    '<line x1="8" y1="24" x2="11" y2="21"/><line x1="8" y1="24" x2="11" y2="21"/>' +
+  '</g>' +
+  '<circle cx="16" cy="16" r="4" fill="url(#piF)" stroke="#FFFFFF" stroke-width="1"/>' +
+  '<circle cx="16" cy="16" r="1.5" fill="#FFFFFF"/>' +
+'</svg>';
+const PU_ICON_DRONE = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">' +
+  '<defs><radialGradient id="piD" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#E0F7FA"/><stop offset="50%" stop-color="#00BCD4"/><stop offset="100%" stop-color="#006064"/></radialGradient></defs>' +
+  // antenna
+  '<line x1="16" y1="3" x2="16" y2="8" stroke="#FFD54F" stroke-width="1.2"/>' +
+  '<circle cx="16" cy="3" r="1.5" fill="#FF6B9D" stroke="#FFFFFF" stroke-width=".5"/>' +
+  // main head (rounded square)
+  '<rect x="6" y="8" width="20" height="18" rx="4" fill="url(#piD)" stroke="#FFFFFF" stroke-width="1"/>' +
+  // inner panel
+  '<rect x="8" y="10" width="16" height="14" rx="2" fill="none" stroke="#80DEEA" stroke-width=".6" opacity=".6"/>' +
+  // left eye
+  '<circle cx="11" cy="15" r="2" fill="#0a0a1a"/>' +
+  '<circle cx="11" cy="15" r="1" fill="#FFEB3B"/>' +
+  // right eye
+  '<circle cx="21" cy="15" r="2" fill="#0a0a1a"/>' +
+  '<circle cx="21" cy="15" r="1" fill="#FFEB3B"/>' +
+  // smile / mouth
+  '<path d="M12 20 Q16 22 20 20" fill="none" stroke="#006064" stroke-width="1" stroke-linecap="round"/>' +
+  // side wings
+  '<rect x="2" y="14" width="3" height="6" rx="1" fill="#00BCD4" stroke="#FFFFFF" stroke-width=".5"/>' +
+  '<rect x="27" y="14" width="3" height="6" rx="1" fill="#00BCD4" stroke="#FFFFFF" stroke-width=".5"/>' +
+  // bottom thruster
+  '<rect x="13" y="26" width="6" height="3" rx="1" fill="#003D5C" stroke="#FFFFFF" stroke-width=".5"/>' +
+  '<circle cx="16" cy="27.5" r="0.8" fill="#FFD54F"/>' +
+'</svg>';
+
 const PU_TYPES = [
-  { id: 'shield',  emoji: '🛡️', label: '護盾', color: '#00E5FF', dur: 9000,  sound: () => S.tone(440, 0.12, 'sine', 0.15) },
-  { id: 'rapid',  emoji: '⚡', label: '連射', color: '#FF6B9D', dur: 6000,  sound: () => S.tone(660, 0.08, 'sine', 0.12) },
-  { id: 'score',  emoji: '💎', label: '雙倍', color: '#FFD54F', dur: 10000, sound: () => S.tone(784, 0.1, 'triangle', 0.14) },
-  { id: 'freeze', emoji: '❄️', label: '暫停', color: '#A5F3FC', dur: 5000,  sound: () => S.tone(330, 0.15, 'sine', 0.12) },
-  { id: 'drone',  emoji: '🤖', label: '小伙伴', color: '#A5F3FC', dur: 20000, sound: () => S.tone(880, 0.1, 'square', 0.10) },
+  { id: 'shield',  icon: PU_ICON_SHIELD, emoji: '🛡️', label: '護盾', color: '#00E5FF', dur: 9000,  sound: () => S.tone(440, 0.12, 'sine', 0.15) },
+  { id: 'rapid',   icon: PU_ICON_RAPID,  emoji: '⚡', label: '連射', color: '#FF6B9D', dur: 6000,  sound: () => S.tone(660, 0.08, 'sine', 0.12) },
+  { id: 'score',   icon: PU_ICON_SCORE,  emoji: '💎', label: '雙倍', color: '#FFD54F', dur: 10000, sound: () => S.tone(784, 0.1, 'triangle', 0.14) },
+  { id: 'freeze',  icon: PU_ICON_FREEZE, emoji: '❄️', label: '暫停', color: '#A5F3FC', dur: 5000,  sound: () => S.tone(330, 0.15, 'sine', 0.12) },
+  { id: 'drone',   icon: PU_ICON_DRONE,  emoji: '🤖', label: '小伙伴', color: '#A5F3FC', dur: 20000, sound: () => S.tone(880, 0.1, 'square', 0.10) },
 ];
 
 function spawnPowerUp(x, y, force) {
@@ -1344,7 +1416,7 @@ function spawnPowerUp(x, y, force) {
   const type = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
   const el = document.createElement('div');
   el.className = 'pu pu-' + type.id;
-  el.textContent = type.emoji;
+  el.innerHTML = type.icon;
   el.style.left = (x - 14) + 'px';
   el.style.top = y + 'px';
   stage.appendChild(el);
