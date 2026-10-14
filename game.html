@@ -514,55 +514,168 @@ let wallHitsLeft = 0;        // turtle wall: remaining hits absorbed
 
 /* ── 4 ship SVG templates (kept simple, color-themed) ── */
 const SHIP_SVGS = {
-  // Whale — cyan classic (existing design)
+  // Whale — cyan classic sci-fi hero ship (balanced, hexagonal hull)
   whale: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
-    '<defs><radialGradient id="sgW" cx="50%" cy="35%" r="60%"><stop offset="0%" stop-color="#E0F7FA"/><stop offset="40%" stop-color="#00BCD4"/><stop offset="100%" stop-color="#006064"/></radialGradient></defs>' +
-    '<polygon points="32,4 44,20 44,36 38,42 26,42 20,36 20,20" fill="url(#sgW)" stroke="#00E5FF" stroke-width="1.5"/>' +
-    '<ellipse cx="32" cy="16" rx="6" ry="8" fill="#B2EBF2" opacity=".85"/>' +
-    '<polygon points="20,28 10,38 14,40 20,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
-    '<polygon points="44,28 54,38 50,40 44,34" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
-    '<rect x="26" y="40" width="12" height="8" rx="3" fill="#006064"/>' +
+    '<defs>' +
+      '<radialGradient id="gW1" cx="50%" cy="30%" r="65%"><stop offset="0%" stop-color="#E0F7FA"/><stop offset="35%" stop-color="#4DD0E1"/><stop offset="70%" stop-color="#00BCD4"/><stop offset="100%" stop-color="#006064"/></radialGradient>' +
+      '<radialGradient id="gW2" cx="50%" cy="20%" r="40%"><stop offset="0%" stop-color="#FFFFFF" stop-opacity=".7"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gW3" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#00E5FF" stop-opacity=".4"/><stop offset="100%" stop-color="#00E5FF" stop-opacity="0"/></radialGradient>' +
+    '</defs>' +
+    // outer aura glow
+    '<ellipse cx="32" cy="30" rx="30" ry="24" fill="url(#gW3)"/>' +
+    // main hull — hexagonal balanced shape
+    '<path d="M32,5 L46,18 L48,30 L42,42 L22,42 L16,30 L18,18 Z" fill="url(#gW1)" stroke="#00E5FF" stroke-width="1.2"/>' +
+    // top highlight (light from above)
+    '<ellipse cx="32" cy="20" rx="11" ry="7" fill="url(#gW2)"/>' +
+    // hull panel lines
+    '<line x1="32" y1="6" x2="32" y2="42" stroke="#006064" stroke-width=".5" opacity=".5"/>' +
+    '<line x1="18" y1="22" x2="46" y2="22" stroke="#006064" stroke-width=".5" opacity=".4"/>' +
+    // cockpit — 2 layers for depth
+    '<ellipse cx="32" cy="17" rx="5.5" ry="7" fill="#0a1a2a" stroke="#4DD0E1" stroke-width=".8"/>' +
+    '<ellipse cx="32" cy="16" rx="4" ry="5" fill="#80DEEA" opacity=".95"/>' +
+    '<ellipse cx="32" cy="15" rx="1.5" ry="2" fill="#FFFFFF"/>' +
+    // left wing with detail
+    '<path d="M18,26 L7,34 L9,40 L17,38 L20,32 Z" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
+    '<line x1="11" y1="36" x2="17" y2="32" stroke="#4DD0E1" stroke-width=".6" opacity=".7"/>' +
+    '<circle cx="11" cy="36" r=".8" fill="#FFD54F"/>' +
+    // right wing
+    '<path d="M46,26 L57,34 L55,40 L47,38 L44,32 Z" fill="#0097A7" stroke="#00E5FF" stroke-width="1"/>' +
+    '<line x1="53" y1="36" x2="47" y2="32" stroke="#4DD0E1" stroke-width=".6" opacity=".7"/>' +
+    '<circle cx="53" cy="36" r=".8" fill="#FFD54F"/>' +
+    // engine nozzle (2 layers)
+    '<rect x="25" y="42" width="14" height="6" rx="2" fill="#003D5C" stroke="#00E5FF" stroke-width=".8"/>' +
+    '<rect x="27" y="44" width="10" height="3" rx="1" fill="#00E5FF" opacity=".9"/>' +
+    // thrust glow trail
+    '<ellipse cx="32" cy="52" rx="6" ry="3" fill="#00E5FF" opacity=".5"/>' +
+    '<ellipse cx="32" cy="54" rx="3" ry="1.5" fill="#FFFFFF" opacity=".7"/>' +
     '</svg>',
-  // Swallow — pink dart with swept wings
+  // Swallow — pink delta-wing fighter (sleek, speed, triple thruster)
   swallow: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
-    '<defs><radialGradient id="sgS" cx="50%" cy="30%" r="65%"><stop offset="0%" stop-color="#FCE4EC"/><stop offset="40%" stop-color="#FF6B9D"/><stop offset="100%" stop-color="#880E4F"/></radialGradient></defs>' +
-    '<polygon points="32,2 42,18 42,30 38,38 26,38 22,30 22,18" fill="url(#sgS)" stroke="#FF80AB" stroke-width="1.5"/>' +
-    '<polygon points="32,2 38,16 32,20 26,16" fill="#FCE4EC"/>' +
-    '<ellipse cx="32" cy="14" rx="4" ry="5" fill="#1A1A2E" opacity=".85"/>' +
-    '<polygon points="22,22 6,32 14,34 22,28" fill="#AD1457" stroke="#FF80AB" stroke-width="1"/>' +
-    '<polygon points="42,22 58,32 50,34 42,28" fill="#AD1457" stroke="#FF80AB" stroke-width="1"/>' +
-    '<polygon points="22,32 14,42 22,38" fill="#FF80AB" opacity=".7"/>' +
-    '<polygon points="42,32 50,42 42,38" fill="#FF80AB" opacity=".7"/>' +
-    '<rect x="26" y="38" width="12" height="6" rx="2" fill="#880E4F"/>' +
+    '<defs>' +
+      '<radialGradient id="gS1" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#FCE4EC"/><stop offset="35%" stop-color="#FF6B9D"/><stop offset="70%" stop-color="#E91E63"/><stop offset="100%" stop-color="#880E4F"/></radialGradient>' +
+      '<radialGradient id="gS2" cx="50%" cy="20%" r="35%"><stop offset="0%" stop-color="#FFFFFF" stop-opacity=".8"/><stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>' +
+      '<radialGradient id="gS3" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#FF80AB" stop-opacity=".45"/><stop offset="100%" stop-color="#FF80AB" stop-opacity="0"/></radialGradient>' +
+    '</defs>' +
+    // outer aura
+    '<ellipse cx="32" cy="28" rx="30" ry="22" fill="url(#gS3)"/>' +
+    // main dart body — sharp pointed
+    '<path d="M32,2 L40,16 L40,30 L36,40 L28,40 L24,30 L24,16 Z" fill="url(#gS1)" stroke="#FF80AB" stroke-width="1.2"/>' +
+    // nose highlight
+    '<path d="M32,4 L36,16 L32,18 L28,16 Z" fill="url(#gS2)"/>' +
+    // canopy — 3 layers for depth
+    '<ellipse cx="32" cy="14" rx="3.5" ry="4.5" fill="#0a1a2a" stroke="#FFB3D9" stroke-width=".6"/>' +
+    '<ellipse cx="32" cy="13" rx="2.5" ry="3" fill="#FFB3D9" opacity=".95"/>' +
+    '<ellipse cx="31" cy="12" rx="1" ry="1.5" fill="#FFFFFF"/>' +
+    // left swept wing (delta)
+    '<path d="M24,22 L4,30 L8,36 L18,34 L24,28 Z" fill="#C2185B" stroke="#FF80AB" stroke-width=".9"/>' +
+    '<line x1="8" y1="32" x2="20" y2="29" stroke="#FFB3D9" stroke-width=".5" opacity=".7"/>' +
+    '<circle cx="9" cy="33" r=".7" fill="#FFEB3B"/>' +
+    // right swept wing
+    '<path d="M40,22 L60,30 L56,36 L46,34 L40,28 Z" fill="#C2185B" stroke="#FF80AB" stroke-width=".9"/>' +
+    '<line x1="56" y1="32" x2="44" y2="29" stroke="#FFB3D9" stroke-width=".5" opacity=".7"/>' +
+    '<circle cx="55" cy="33" r=".7" fill="#FFEB3B"/>' +
+    // left rear stabilizer
+    '<path d="M28,32 L22,44 L27,40 L29,36 Z" fill="#AD1457" stroke="#FF80AB" stroke-width=".6"/>' +
+    // right rear stabilizer
+    '<path d="M36,32 L42,44 L37,40 L35,36 Z" fill="#AD1457" stroke="#FF80AB" stroke-width=".6"/>' +
+    // speed lines (left)
+    '<line x1="2" y1="36" x2="10" y2="36" stroke="#FFFFFF" stroke-width=".8" opacity=".5"/>' +
+    '<line x1="0" y1="40" x2="6" y2="40" stroke="#FFFFFF" stroke-width=".6" opacity=".4"/>' +
+    // speed lines (right)
+    '<line x1="62" y1="36" x2="54" y2="36" stroke="#FFFFFF" stroke-width=".8" opacity=".5"/>' +
+    '<line x1="64" y1="40" x2="58" y2="40" stroke="#FFFFFF" stroke-width=".6" opacity=".4"/>' +
+    // engine nozzle
+    '<rect x="27" y="40" width="10" height="5" rx="1.5" fill="#4A0E2C" stroke="#FF80AB" stroke-width=".6"/>' +
+    '<rect x="29" y="42" width="6" height="2" rx=".8" fill="#FF80AB"/>' +
+    // thrust glow
+    '<ellipse cx="32" cy="49" rx="5" ry="2.5" fill="#FF80AB" opacity=".55"/>' +
+    '<ellipse cx="32" cy="51" rx="2.5" ry="1.2" fill="#FFFFFF" opacity=".7"/>' +
     '</svg>',
-  // Turtle — green wide armored
+  // Turtle — green armored cruiser (wide hull, twin cannons, hex plating)
   turtle: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
-    '<defs><radialGradient id="sgT" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#E8F5E9"/><stop offset="40%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#1B5E20"/></radialGradient></defs>' +
-    '<path d="M16,12 L48,12 L52,20 L52,42 L48,46 L16,46 L12,42 L12,20 Z" fill="url(#sgT)" stroke="#69F0AE" stroke-width="2"/>' +
-    '<ellipse cx="32" cy="28" rx="14" ry="10" fill="#1B5E20" opacity=".4"/>' +
-    '<ellipse cx="32" cy="16" rx="5" ry="6" fill="#A5D6A7" opacity=".9"/>' +
-    '<rect x="30" y="14" width="4" height="4" rx="1" fill="#1A1A2E"/>' +
-    '<rect x="14" y="22" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
-    '<rect x="46" y="22" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
-    '<rect x="14" y="34" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
-    '<rect x="46" y="34" width="4" height="4" rx="1" fill="#1A1A2E" opacity=".6"/>' +
-    '<rect x="24" y="46" width="6" height="4" rx="1" fill="#1B5E20"/>' +
-    '<rect x="34" y="46" width="6" height="4" rx="1" fill="#1B5E20"/>' +
-    '<rect x="26" y="50" width="12" height="3" rx="1" fill="#2E7D32"/>' +
+    '<defs>' +
+      '<radialGradient id="gT1" cx="50%" cy="30%" r="60%"><stop offset="0%" stop-color="#E8F5E9"/><stop offset="35%" stop-color="#66BB6A"/><stop offset="70%" stop-color="#2E7D32"/><stop offset="100%" stop-color="#1B5E20"/></radialGradient>' +
+      '<linearGradient id="gT2" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#A5D6A7" stop-opacity=".7"/><stop offset="100%" stop-color="#1B5E20" stop-opacity=".3"/></linearGradient>' +
+      '<radialGradient id="gT3" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#69F0AE" stop-opacity=".45"/><stop offset="100%" stop-color="#69F0AE" stop-opacity="0"/></radialGradient>' +
+    '</defs>' +
+    // outer armor aura
+    '<ellipse cx="32" cy="32" rx="32" ry="26" fill="url(#gT3)"/>' +
+    // outer armor shell
+    '<path d="M14,10 L50,10 L56,20 L56,44 L50,50 L14,50 L8,44 L8,20 Z" fill="url(#gT1)" stroke="#69F0AE" stroke-width="2"/>' +
+    // inner armor plate
+    '<path d="M18,16 L46,16 L50,22 L50,42 L46,46 L18,46 L14,42 L14,22 Z" fill="url(#gT2)" stroke="#1B5E20" stroke-width=".6"/>' +
+    // hex armor panels (3 across, 2 down)
+    '<polygon points="20,22 25,20 30,22 30,27 25,29 20,27" fill="none" stroke="#1B5E20" stroke-width=".5" opacity=".6"/>' +
+    '<polygon points="34,22 39,20 44,22 44,27 39,29 34,27" fill="none" stroke="#1B5E20" stroke-width=".5" opacity=".6"/>' +
+    '<polygon points="20,32 25,30 30,32 30,37 25,39 20,37" fill="none" stroke="#1B5E20" stroke-width=".5" opacity=".6"/>' +
+    '<polygon points="34,32 39,30 44,32 44,37 39,39 34,37" fill="none" stroke="#1B5E20" stroke-width=".5" opacity=".6"/>' +
+    // central heavy cannon
+    '<ellipse cx="32" cy="30" rx="14" ry="8" fill="#0a1a2a" stroke="#69F0AE" stroke-width=".8"/>' +
+    '<ellipse cx="32" cy="30" rx="10" ry="5" fill="#1B5E20" opacity=".7"/>' +
+    '<circle cx="32" cy="30" r="3" fill="#00E5FF" opacity=".95"/>' +
+    '<circle cx="32" cy="30" r="1.2" fill="#FFFFFF"/>' +
+    // corner reinforcement rivets (4 corners)
+    '<circle cx="14" cy="20" r="1.4" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    '<circle cx="50" cy="20" r="1.4" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    '<circle cx="14" cy="44" r="1.4" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    '<circle cx="50" cy="44" r="1.4" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    // side warning lights
+    '<circle cx="10" cy="26" r=".9" fill="#FFD54F"/>' +
+    '<circle cx="10" cy="32" r=".9" fill="#FF1744"/>' +
+    '<circle cx="54" cy="26" r=".9" fill="#FFD54F"/>' +
+    '<circle cx="54" cy="32" r=".9" fill="#FF1744"/>' +
+    // twin treads (bottom)
+    '<rect x="22" y="50" width="6" height="5" rx="1" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    '<rect x="36" y="50" width="6" height="5" rx="1" fill="#1B5E20" stroke="#69F0AE" stroke-width=".5"/>' +
+    // tread wheels
+    '<circle cx="25" cy="52.5" r="1.2" fill="#2E7D32"/>' +
+    '<circle cx="39" cy="52.5" r="1.2" fill="#2E7D32"/>' +
+    // base bar
+    '<rect x="20" y="55" width="24" height="2" rx="1" fill="#2E7D32"/>' +
     '</svg>',
-  // Phoenix — orange bird with spread wings
+  // Phoenix — orange fire bird (3-section wings, flame trail, phaser chest)
   phoenix: '<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">' +
-    '<defs><radialGradient id="sgP" cx="50%" cy="40%" r="65%"><stop offset="0%" stop-color="#FFFDE7"/><stop offset="40%" stop-color="#FF8C00"/><stop offset="100%" stop-color="#BF360C"/></radialGradient></defs>' +
-    '<path d="M32,2 L40,16 L36,28 L32,40 L28,28 L24,16 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1.5"/>' +
-    '<path d="M32,8 L36,18 L32,24 L28,18 Z" fill="#FFFDE7" opacity=".8"/>' +
-    '<ellipse cx="32" cy="14" rx="3" ry="4" fill="#1A1A2E" opacity=".85"/>' +
-    '<path d="M24,18 L8,12 L14,22 L20,24 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1"/>' +
-    '<path d="M40,18 L56,12 L50,22 L44,24 Z" fill="url(#sgP)" stroke="#FFD54F" stroke-width="1"/>' +
-    '<path d="M22,28 L10,30 L18,32 L24,30 Z" fill="#FF6D00" opacity=".85"/>' +
-    '<path d="M42,28 L54,30 L46,32 L40,30 Z" fill="#FF6D00" opacity=".85"/>' +
-    '<path d="M28,36 L24,44 L30,40 Z" fill="#FFD54F"/>' +
-    '<path d="M36,36 L40,44 L34,40 Z" fill="#FFD54F"/>' +
-    '<rect x="28" y="40" width="8" height="6" rx="2" fill="#BF360C"/>' +
+    '<defs>' +
+      '<linearGradient id="gP1" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFDE7"/><stop offset="35%" stop-color="#FFD54F"/><stop offset="70%" stop-color="#FF8C00"/><stop offset="100%" stop-color="#BF360C"/></linearGradient>' +
+      '<linearGradient id="gP2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFEB3B"/><stop offset="50%" stop-color="#FF6D00"/><stop offset="100%" stop-color="#B71C1C"/></linearGradient>' +
+      '<linearGradient id="gP3" x1="50%" y1="0%" x2="50%" y2="100%"><stop offset="0%" stop-color="#FFEB3B"/><stop offset="100%" stop-color="#FF1744"/></linearGradient>' +
+      '<radialGradient id="gP4" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#FFD54F" stop-opacity=".5"/><stop offset="100%" stop-color="#FF6D00" stop-opacity="0"/></radialGradient>' +
+    '</defs>' +
+    // outer flame aura
+    '<ellipse cx="32" cy="32" rx="32" ry="26" fill="url(#gP4)"/>' +
+    // phoenix head with beak
+    '<path d="M32,2 L37,12 L34,20 L30,20 L27,12 Z" fill="url(#gP1)" stroke="#FFD54F" stroke-width="1"/>' +
+    // beak
+    '<path d="M30,18 L28,22 L32,20 L34,22 L34,18 Z" fill="#FF6F00" stroke="#FFB300" stroke-width=".5"/>' +
+    // eye (sharp)
+    '<ellipse cx="32" cy="10" rx="2" ry="2.5" fill="#1A1A2E"/>' +
+    '<ellipse cx="32" cy="9.5" rx="1" ry="1.5" fill="#FFFFFF"/>' +
+    // chest body
+    '<path d="M28,20 L36,20 L40,28 L38,38 L26,38 L24,28 Z" fill="url(#gP1)" stroke="#FF6D00" stroke-width="1"/>' +
+    // chest feather details (3 layers)
+    '<path d="M27,24 L37,24 L36,28 L28,28 Z" fill="#FF8C00" opacity=".75"/>' +
+    '<path d="M28,30 L36,30 L35,34 L29,34 Z" fill="#FF6D00" opacity=".6"/>' +
+    '<path d="M30,35 L34,35 L33,37 L31,37 Z" fill="#BF360C" opacity=".7"/>' +
+    // left wing (3 sections)
+    '<path d="M24,20 L8,12 L4,20 L10,22 L4,26 L14,28 L24,26 Z" fill="url(#gP2)" stroke="#FFD54F" stroke-width=".8"/>' +
+    '<line x1="6" y1="18" x2="14" y2="20" stroke="#FFEB3B" stroke-width=".4" opacity=".7"/>' +
+    '<line x1="8" y1="24" x2="16" y2="25" stroke="#FFEB3B" stroke-width=".4" opacity=".7"/>' +
+    // right wing (3 sections)
+    '<path d="M40,20 L56,12 L60,20 L54,22 L60,26 L50,28 L40,26 Z" fill="url(#gP2)" stroke="#FFD54F" stroke-width=".8"/>' +
+    '<line x1="58" y1="18" x2="50" y2="20" stroke="#FFEB3B" stroke-width=".4" opacity=".7"/>' +
+    '<line x1="56" y1="24" x2="48" y2="25" stroke="#FFEB3B" stroke-width=".4" opacity=".7"/>' +
+    // tail feathers (3 flame-like)
+    '<path d="M28,38 L24,46 L30,42 Z" fill="url(#gP3)" stroke="#FFD54F" stroke-width=".5"/>' +
+    '<path d="M32,40 L30,52 L34,52 L32,42 Z" fill="#FFEB3B" stroke="#FFD54F" stroke-width=".5"/>' +
+    '<path d="M36,38 L40,46 L34,42 Z" fill="url(#gP3)" stroke="#FFD54F" stroke-width=".5"/>' +
+    // flame particles (4 around wings)
+    '<circle cx="3" cy="18" r="1" fill="#FFEB3B" opacity=".75"/>' +
+    '<circle cx="61" cy="18" r="1" fill="#FFEB3B" opacity=".75"/>' +
+    '<circle cx="2" cy="28" r=".7" fill="#FF6D00" opacity=".65"/>' +
+    '<circle cx="62" cy="28" r=".7" fill="#FF6D00" opacity=".65"/>' +
+    // phaser glow on chest
+    '<ellipse cx="32" cy="30" rx="3" ry="4" fill="#FFFFFF" opacity=".7"/>' +
+    '<ellipse cx="32" cy="30" rx="1.5" ry="2" fill="#FFEB3B"/>' +
     '</svg>'
 };
 
