@@ -445,7 +445,9 @@ const S = SIMouse, $ = S.$;
 S.lockSEN(); S.armAudio();
 
 const params = new URLSearchParams(location.search);
-const modeId = ['move', 'left', 'right', 'move+', 'left+', 'right+'].includes(params.get('mode')) ? params.get('mode') : 'move';
+// accept any known mode id (incl. ipad / wasd); fall back to move if missing/unknown
+const _validIds = S.MODES.map(function (m) { return m.id; });
+const modeId = _validIds.includes(params.get('mode')) ? params.get('mode') : 'move';
 const mode = S.modeMeta(modeId);
 
 const ROWS_FACE = ['🦑', '🦀', '🐙', '👾'];
