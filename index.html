@@ -25,7 +25,9 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .who-btn.on{border-color:#426eb4;background:#dbe8f8;box-shadow:0 0 0 2px #FFD54F}
 .name-row{display:flex;gap:8px;margin-top:10px}
 .name-row input{flex:1;min-height:48px;border-radius:14px;border:3px solid #426eb4;padding:8px 12px;font-size:1.1rem;font-weight:800;color:#3D2B5A}
-.modes{display:grid;gap:12px}
+.modes{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.mode.alt{background:linear-gradient(135deg,#1A237E,#311B92);border-color:#7C4DFF66}
+.mode.alt .go{background:#7C4DFF;color:#fff}
 .mode{display:flex;flex-direction:column;align-items:stretch;gap:8px;text-align:left;padding:14px;border-radius:18px;background:linear-gradient(135deg,#0A1628,#1A237E);color:#E0F7FA;border:3px solid #00E5FF66;min-height:88px;box-shadow:0 8px 20px rgba(10,22,40,.25);cursor:pointer}
 .mode:active{transform:scale(.98)}
 .mode .row{display:flex;align-items:center;gap:12px}
@@ -121,7 +123,7 @@ function renderModes() {
     const b = S.bestOf(m.id);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mode';
+    btn.className = 'mode' + (m.virtualCtrl || m.keyboardCtrl ? ' alt' : '');
     const shipPicks = S.SHIPS.map(s =>
       '<div class="ship-pick' + (s.id === currentShip ? ' on' : '') + '" data-ship="' + s.id + '">' +
         '<span class="se">' + s.emoji + '</span>' +
@@ -137,7 +139,6 @@ function renderModes() {
         '<span class="go">開始</span>' +
       '</div>' +
       '<div class="ship-row">' + shipPicks + '</div>';
-    // ship pick — change selection, do NOT start game
     btn.querySelectorAll('.ship-pick').forEach(el => {
       el.onclick = (e) => {
         e.stopPropagation();
@@ -146,7 +147,6 @@ function renderModes() {
         btn.querySelectorAll('.ship-pick').forEach(x => x.classList.toggle('on', x.getAttribute('data-ship') === currentShip));
       };
     });
-    // start game on card click (but not on ship pick)
     btn.onclick = () => {
       S.saveName(nameEl.value);
       location.href = S.gameUrl(m.id, currentShip);

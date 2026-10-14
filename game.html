@@ -191,6 +191,15 @@ body.ship-phoenix .ship-tag{background:#FF8C00}
 .skill-btn .skill-label{position:absolute;font-size:.55rem;top:2px;left:0;right:0;text-align:center;color:currentColor;opacity:.7;letter-spacing:1px}
 .skill-btn.pressed{transform:scale(.9)}
 @media (max-height:600px){.skill-btn{width:64px;height:64px;font-size:1.7rem;bottom:60px}}
+/* iPad D-pad (L/R buttons) */
+.dpad{position:absolute;left:20px;bottom:80px;display:flex;gap:18px;z-index:8;pointer-events:none}
+.dpad-btn{width:90px;height:90px;border-radius:50%;background:rgba(10,22,40,.85);border:4px solid #00E5FF;color:#00E5FF;font-size:2.2rem;font-weight:900;pointer-events:auto;display:grid;place-items:center;box-shadow:0 0 18px #00E5FF88,inset 0 0 10px rgba(0,229,255,.2);user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;transition:transform .08s, background .08s, box-shadow .08s;cursor:pointer}
+.dpad-btn:active,.dpad-btn.pressed{transform:scale(.92);background:rgba(0,229,255,.35);box-shadow:0 0 28px #00E5FF,inset 0 0 18px rgba(0,229,255,.4)}
+.dpad-btn .sub{position:absolute;font-size:.5rem;bottom:6px;left:0;right:0;text-align:center;color:#FFFFFF;opacity:.7;letter-spacing:1px}
+@media (max-height:600px){.dpad-btn{width:70px;height:70px;font-size:1.8rem}.dpad{bottom:60px;gap:14px}}
+/* wasd mode visual hint */
+.wasd-hint{position:absolute;left:50%;bottom:20px;transform:translateX(-50%);z-index:6;background:rgba(10,22,40,.85);border:2px solid #00E5FF;border-radius:14px;padding:6px 12px;font-weight:900;color:#00E5FF;font-size:.9rem;letter-spacing:1px;pointer-events:none;animation:wasdFade 4s ease-out forwards}
+@keyframes wasdFade{0%{opacity:0;transform:translateX(-50%) translateY(10px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}85%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-10px)}}
 .skill-burst{position:absolute;z-index:7;pointer-events:none;border-radius:50%;background:radial-gradient(circle, var(--c) 0%, transparent 70%);animation:burst .6s ease-out forwards}
 @keyframes burst{0%{transform:scale(0);opacity:1}100%{transform:scale(2.5);opacity:0}}
 .dash-trail{position:absolute;z-index:5;pointer-events:none;border-radius:50%;background:radial-gradient(circle, var(--c) 0%, transparent 70%);animation:dashTrail .45s ease-out forwards}
@@ -356,6 +365,10 @@ body.printing #certPrint{display:block!important}
     <span class="skill-label" id="skillLabel">技能</span>
     <span id="skillIcon">✨</span>
     <span class="cd-num" id="skillCdNum" style="display:none"></span>
+  </div>
+  <div class="dpad" id="dpad" style="display:none">
+    <button class="dpad-btn dpad-left" id="dpadLeft" type="button" aria-label="左">◀</button>
+    <button class="dpad-btn dpad-right" id="dpadRight" type="button" aria-label="右">▶</button>
   </div>
   <div class="ship-wrap" id="shipWrap"><div class="ship ship-themed" id="shipEl">
     <!-- ship SVG injected by JS based on current ship -->
@@ -661,6 +674,7 @@ let eliteCount = 0;   // total elite aliens spawned this wave
 let miniBossSpawned = false; // mini-boss spawned for current wave
 let trackingShotActive = false; // one tracking shot per wave (wave ≥7)
 let spreadShotActive = false;  // one spread shot per eligible wave (wave ≥10, every 3)
+let keyLeft = false, keyRight = false;  // keyboard / dpad state for iPad + WASD modes
 let ship = null;             // current ship data (loaded from URL/localStorage)
 let shipLife = 0;            // current HP (decremented on hit; 0 = dead)
 let shipMaxLife = 0;         // max HP
@@ -1053,6 +1067,48 @@ window.addEventListener('keydown', e => {
 });
 
 initShip();
+setupControls();
+
+/* ── control setup (iPad D-pad + WASD keyboard) ── */
+function setupControls() {
+  const dpad = $('dpad');
+  // iPad: show D-pad
+  if (mode.id === 'ipad') {
+    dpad.style.display = 'flex';
+    const left = $('dpadLeft'), right = $('dpadRight');
+    const setLeft = (v) => { keyLeft = v; left.classList.toggle('pressed', v); };
+    const setRight = (v) => { keyRight = v; right.classList.toggle('pressed', v); };
+    // pointer events (works for mouse + touch)
+    left.addEventListener('pointerdown', (e) => { e.preventDefault(); setLeft(true); });
+    left.addEventListener('pointerup', (e) => { e.preventDefault(); setLeft(false); });
+    left.addEventListener('pointercancel', () => setLeft(false));
+    left.addEventListener('pointerleave', () => setLeft(false));
+    right.addEventListener('pointerdown', (e) => { e.preventDefault(); setRight(true); });
+    right.addEventListener('pointerup', (e) => { e.preventDefault(); setRight(false); });
+    right.addEventListener('pointercancel', () => setRight(false));
+    right.addEventListener('pointerleave', () => setRight(false));
+  } else {
+    dpad.style.display = 'none';
+  }
+  // WASD: show one-time hint
+  if (mode.id === 'wasd') {
+    const hint = document.createElement('div');
+    hint.className = 'wasd-hint';
+    hint.textContent = 'A / D 或 ← / → 移動';
+    stage.appendChild(hint);
+    setTimeout(() => { if (hint.parentNode) hint.remove(); }, 4200);
+  }
+}
+// Universal keyboard tracking (only matters in wasd mode but always track for simplicity)
+window.addEventListener('keydown', (e) => {
+  if (e.repeat) return; // ignore key repeat
+  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') { e.preventDefault(); keyLeft = true; }
+  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') { e.preventDefault(); keyRight = true; }
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keyLeft = false;
+  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keyRight = false;
+});
 
 $('btnSpeak').onclick = () => S.speak(mode.speak);
 $('btnHub').onclick = () => { location.href = './index.html'; };
@@ -1087,6 +1143,8 @@ if (S.autoSpeak()) setTimeout(() => S.speak(mode.speak), 400);
 
 // —— input ——
 window.addEventListener('pointermove', e => {
+  // iPad / WASD modes: ship position driven by keys, ignore mouse
+  if (mode.id === 'ipad' || mode.id === 'wasd') return;
   const r = stage.getBoundingClientRect();
   shipX = Math.max(0.06, Math.min(0.94, (e.clientX - r.left) / r.width));
   shipWrap.style.left = (shipX * 100) + '%';
@@ -2128,8 +2186,15 @@ function tick() {
   const spec = waveSpec(wave || 1);
   const maxY = L.alienMaxY - L.alienH;
 
-  if ((mode.id === 'move' || mode.id === 'move+') && canShoot()) shoot();
+  // auto-shoot for move modes + iPad + WASD (no manual fire needed)
+  if ((mode.id === 'move' || mode.id === 'move+' || mode.id === 'ipad' || mode.id === 'wasd') && canShoot()) shoot();
   if (fireHold && canShoot()) shoot(); // manual hold = rapid fire
+  // iPad D-pad / WASD keyboard movement (overrides mouse in those modes)
+  if (mode.id === 'ipad' || mode.id === 'wasd') {
+    if (keyLeft) shipX = Math.max(0.06, shipX - 0.014);
+    if (keyRight) shipX = Math.min(0.94, shipX + 0.014);
+    shipWrap.style.left = (shipX * 100) + '%';
+  }
 
   ufoT += 1;
   if (ufoT > 55 * 18 && Math.random() < 0.012) { ufoT = 0; spawnUfo(); }
