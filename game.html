@@ -41,6 +41,19 @@ background-image:radial-gradient(1px 1px at 8% 30%,#fff,transparent),radial-grad
 .stars3{opacity:.18;animation:starScroll 42s linear infinite;
 background-image:radial-gradient(2px 2px at 15% 45%,#fff,transparent),radial-gradient(1.5px 1.5px at 50% 25%,#A5F3FC,transparent),radial-gradient(2px 2px at 80% 80%,#fff,transparent),radial-gradient(1.5px 1.5px at 30% 65%,#fff,transparent),radial-gradient(2px 2px at 65% 10%,#B2EBF2,transparent)}
 @keyframes starScroll{from{background-position:0 0}to{background-position:0 110vh}}
+/* F: alien subtle pulse (different speeds per row to feel alive) */
+@keyframes alienPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+.alien.r0{animation:alienPulse 2.4s ease-in-out infinite}
+.alien.r1{animation:alienPulse 2.0s ease-in-out infinite .3s}
+.alien.r2{animation:alienPulse 2.6s ease-in-out infinite .6s}
+.alien.r3{animation:alienPulse 2.2s ease-in-out infinite .9s}
+/* F: power-up icon slow rotate */
+@keyframes puSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.pu svg{animation:puSpin 8s linear infinite}
+/* F: nebula planet slow drift + twinkle */
+@keyframes planetDrift{0%,100%{transform:translate(0,0)}50%{transform:translate(-12px,8px)}}
+@keyframes twinkle{0%,100%{opacity:.3}50%{opacity:1}}
+.nebula svg circle[opacity]{animation:twinkle 3s ease-in-out infinite}
 .alien{position:absolute;width:clamp(40px,7vw,56px);height:clamp(40px,7vw,56px);display:grid;place-items:center;
 font-size:clamp(1.5rem,5vw,2.3rem);line-height:1;z-index:3;
 border-radius:12px;transition:opacity .1s,transform .1s;pointer-events:none}
