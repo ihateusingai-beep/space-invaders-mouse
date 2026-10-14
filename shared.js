@@ -207,14 +207,14 @@
     }, true);
   }
 
-  function toast(m, bad) {
+  function toast(m, bad, dur) {
     var el = $('toast');
     if (!el) return;
     el.textContent = m;
     el.classList.toggle('bad', !!bad);
     el.classList.add('show');
     clearTimeout(el._t);
-    el._t = setTimeout(function () { el.classList.remove('show'); }, 1200);
+    el._t = setTimeout(function () { el.classList.remove('show'); }, dur || 1200);
   }
 
   function confetti() {

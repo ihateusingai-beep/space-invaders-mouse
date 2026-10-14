@@ -90,8 +90,20 @@ border-radius:3px;pointer-events:none}
 .pu-burst{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:9;box-shadow:0 0 8px currentColor;animation:puBurst .65s ease-out forwards}
 @keyframes puBurst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
 /* power-up big banner above ship */
-.pu-banner{position:absolute;z-index:10;font-weight:900;font-size:1.3rem;text-shadow:0 0 12px currentColor,0 2px 4px #000;pointer-events:none;width:160px;text-align:center;animation:puBanner .9s ease-out forwards}
-@keyframes puBanner{0%{opacity:0;transform:translateY(20px) scale(.5)}20%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-50px) scale(1)}}
+.pu-banner{position:absolute;z-index:10;font-weight:900;font-size:2rem;text-shadow:0 0 16px currentColor,0 0 32px currentColor,0 2px 4px #000;pointer-events:none;width:240px;text-align:center;animation:puBanner 1.4s ease-out forwards;letter-spacing:1px}
+.pu-banner .label{font-size:.85rem;opacity:.9;display:block;margin-top:2px;text-shadow:0 1px 2px #000;letter-spacing:2px}
+@keyframes puBanner{0%{opacity:0;transform:translateY(20px) scale(.4)}15%{opacity:1;transform:translateY(0) scale(1.4)}30%{transform:translateY(0) scale(1)}85%{opacity:1;transform:translateY(-20px) scale(1)}100%{opacity:0;transform:translateY(-50px) scale(.9)}}
+.pu-flash{position:fixed;inset:0;pointer-events:none;z-index:28;background:currentColor;opacity:.4;animation:puFlash .4s ease-out forwards}
+@keyframes puFlash{0%{opacity:.4}100%{opacity:0}}
+.pu-pickup-zoom{animation:puPickupZoom .35s ease-out}
+@keyframes puPickupZoom{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+/* hit feedback (HP lost) */
+.hit-red{position:fixed;inset:0;pointer-events:none;z-index:25;background:radial-gradient(circle, #FF1744 0%, transparent 70%);opacity:0;animation:hitRed .5s ease-out forwards}
+@keyframes hitRed{0%{opacity:.7}100%{opacity:0}}
+.lives .heart-icon.hit-anim{animation:heartHit .6s ease-out}
+@keyframes heartHit{0%{transform:scale(1)}20%{transform:scale(1.6);filter:drop-shadow(0 0 12px #FF1744) brightness(2)}100%{transform:scale(1);filter:grayscale(1) drop-shadow(0 0 0 transparent);opacity:.18}}
+.ship-damaged{animation:shipDamaged .15s ease-in-out 3}
+@keyframes shipDamaged{0%,100%{filter:brightness(1)}50%{filter:brightness(2) sepia(1) hue-rotate(-50deg) saturate(4)}}
 /* ship lane marker only — aliens never cross (layout clamp) */
 .ship-lane{position:absolute;left:4%;right:4%;bottom:20%;height:1px;background:linear-gradient(90deg,transparent,#00E5FF44,transparent);z-index:2;pointer-events:none}
 .guide{position:absolute;left:10px;bottom:clamp(6px,1.5vh,10px);z-index:5;background:rgba(10,22,40,.92);border:2px solid #00E5FF;border-radius:14px;padding:6px 10px;font-weight:900;max-width:min(52%,280px);font-size:clamp(.8rem,2vw,.9rem);pointer-events:none}
@@ -147,9 +159,9 @@ body.ship-whale .ship-tag{background:#00BCD4}
 body.ship-swallow .ship-tag{background:#FF6B9D}
 body.ship-turtle .ship-tag{background:#4CAF50}
 body.ship-phoenix .ship-tag{background:#FF8C00}
-.lives{display:inline-flex;gap:3px;margin-left:8px;font-size:1rem;line-height:1;vertical-align:middle}
-.lives .heart-icon{filter:drop-shadow(0 0 4px #FF6B9D);transition:opacity .2s,filter .2s}
-.lives .heart-icon.lost{opacity:.18;filter:grayscale(1) drop-shadow(0 0 0 transparent)}
+.lives{display:inline-flex;gap:4px;margin-left:8px;font-size:1.4rem;line-height:1;vertical-align:middle}
+.lives .heart-icon{filter:drop-shadow(0 0 6px #FF1744);transition:opacity .3s,filter .3s;display:inline-block}
+.lives .heart-icon.lost{opacity:.22;filter:grayscale(1) drop-shadow(0 0 0 transparent)}
 .skill-btn{position:absolute;right:12px;bottom:80px;z-index:8;width:84px;height:84px;border-radius:50%;
   border:4px solid currentColor;background:rgba(10,22,40,.85);color:#00E5FF;display:grid;place-items:center;
   font-size:2.2rem;cursor:pointer;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
@@ -1049,7 +1061,7 @@ const PU_TYPES = [
 
 function spawnPowerUp(x, y, force) {
   // bonus time: ×3 spawn rate; force = guaranteed drop (elite kill)
-  const rate = force ? 1 : (Date.now() < bonusTimeEnd) ? 0.54 : 0.18;
+  const rate = force ? 1 : (Date.now() < bonusTimeEnd) ? 0.30 : 0.10;
   if (!force && Math.random() > rate) return;
   const type = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
   const el = document.createElement('div');
@@ -1104,18 +1116,31 @@ function activatePowerUp(type) {
   const r = stage.getBoundingClientRect();
   const px = shipX * r.width;
   const py = mode.freeMove ? shipY : r.height - 44;
-  spawnPowerupBurst(px, py, type.color || '#FFD54F');
+  const c = type.color || '#FFD54F';
+  // 1) full-screen color flash (overrides stage.shake)
+  const flash = document.createElement('div');
+  flash.className = 'pu-flash';
+  flash.style.color = c;
+  document.body.appendChild(flash);
+  setTimeout(() => flash.remove(), 450);
+  // 2) big particle burst (more particles, 2 rings)
+  spawnPowerupBurst(px, py, c);
+  setTimeout(() => spawnPowerupBurst(px, py, '#FFFFFF'), 80);
+  // 3) zoom pulse on stage
+  stage.classList.add('pu-pickup-zoom');
+  setTimeout(() => stage.classList.remove('pu-pickup-zoom'), 380);
+  // 4) shake + flash
   flashScreen();
   shake();
   S.sfxOk();
   type.sound && type.sound();
-  // big "POWER UP!" banner
+  // 5) big "POWER UP!" banner
   const banner = document.createElement('div');
   banner.className = 'pu-banner';
-  banner.textContent = type.emoji + ' ' + type.label;
-  banner.style.cssText = 'left:' + (px - 80) + 'px; top:' + (py - 50) + 'px; color:' + (type.color || '#FFD54F');
+  banner.innerHTML = type.emoji + ' ' + type.label + '<span class="label">POWER UP!</span>';
+  banner.style.cssText = 'left:' + (px - 120) + 'px; top:' + (py - 70) + 'px; color:' + c;
   stage.appendChild(banner);
-  setTimeout(() => banner.remove(), 900);
+  setTimeout(() => banner.remove(), 1450);
 }
 
 function spawnPowerupBurst(cx, cy, color) {
@@ -1216,19 +1241,36 @@ function droneKill(a) {
 function doHit() {
   if (didEnd) return;
   shipLife -= 1;
+  // 1) red full-screen flash
+  const redFlash = document.createElement('div');
+  redFlash.className = 'hit-red';
+  document.body.appendChild(redFlash);
+  setTimeout(() => redFlash.remove(), 550);
+  // 2) ship damage visual (sepia tint pulse)
+  const shipEl = $('shipEl');
+  shipEl.classList.add('ship-damaged');
+  setTimeout(() => shipEl.classList.remove('ship-damaged'), 500);
+  // 3) animate the lost heart before re-rendering
+  const livesEl = $('lives');
+  const heartEls = livesEl.querySelectorAll('.heart-icon');
+  if (heartEls[shipLife]) {
+    heartEls[shipLife].classList.add('hit-anim');
+    setTimeout(() => heartEls[shipLife].classList.remove('hit-anim'), 650);
+  }
   renderLives();
   // brief invincibility frames after losing a life
   invincibleEnd = Date.now() + 1200;
   S.tone(180, 0.2, 'sawtooth', 0.18);
+  setTimeout(() => S.tone(140, 0.18, 'sawtooth', 0.16), 100);
   S.sfxBad();
   flashScreen();
   shake();
   if (shipLife <= 0) {
     S.toast('💥 戰機擊毀！');
-    setTimeout(() => endRun(false), 400);
+    setTimeout(() => endRun(false), 600);
   } else {
-    S.toast('💔 -1 命 (' + shipLife + '/' + shipMaxLife + ')');
-    spawnParticles(shipX * stage.getBoundingClientRect().width, stage.getBoundingClientRect().height - 44, ship.color);
+    S.toast('💔 -1 命 (' + shipLife + '/' + shipMaxLife + ')', false, 1800);
+    spawnParticles(shipX * stage.getBoundingClientRect().width, stage.getBoundingClientRect().height - 44, '#FF1744');
   }
 }
 
@@ -1443,8 +1485,8 @@ function onWaveClear() {
   const L = layout();
   const popEl = scorePop(L.w / 2, L.h / 2, '+' + bonus + ' ⭐');
   popEl.classList.add('big-pop');
-  // bonus time: ×3 power-up spawn rate for 3 seconds
-  bonusTimeEnd = Date.now() + 3000;
+  // bonus time: ×3 power-up spawn rate for 2.5 seconds
+  bonusTimeEnd = Date.now() + 2500;
   showWaveClear();
   S.toast('波數獎勵 +' + bonus + ' · BONUS TIME!');
   if (wave >= 5) achUnlock('wave5');
