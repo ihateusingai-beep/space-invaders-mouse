@@ -79,6 +79,19 @@ border-radius:3px;pointer-events:none}
 @keyframes boom{0%{opacity:1;transform:scale(.5)}100%{opacity:0;transform:scale(1.6)}}
 .pop{position:absolute;z-index:8;font-weight:900;font-size:1rem;color:#FFD54F;text-shadow:0 0 8px #00E5FF;pointer-events:none;animation:pop .5s ease forwards}
 @keyframes pop{0%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-30px)}}
+
+/* enemy bullet (chaos/blitz themes) */
+.alien-laser{position:absolute;width:6px;height:18px;border-radius:3px;background:linear-gradient(180deg,#FF5252,#B71C1C);box-shadow:0 0 10px #FF5252,0 0 4px #fff;z-index:4;pointer-events:none}
+/* brief red flash on the alien that's about to shoot */
+.alien.shooting{filter:drop-shadow(0 0 14px #FF5252) brightness(1.5)!important;animation:shootFlash .12s steps(2) 1}
+@keyframes shootFlash{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+/* power-up pickup burst */
+.pu-burst{position:absolute;width:8px;height:8px;border-radius:50%;pointer-events:none;z-index:9;box-shadow:0 0 8px currentColor;animation:puBurst .65s ease-out forwards}
+@keyframes puBurst{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}}
+/* power-up big banner above ship */
+.pu-banner{position:absolute;z-index:10;font-weight:900;font-size:1.3rem;text-shadow:0 0 12px currentColor,0 2px 4px #000;pointer-events:none;width:160px;text-align:center;animation:puBanner .9s ease-out forwards}
+@keyframes puBanner{0%{opacity:0;transform:translateY(20px) scale(.5)}20%{opacity:1;transform:translateY(0) scale(1.2)}100%{opacity:0;transform:translateY(-50px) scale(1)}}
 /* ship lane marker only — aliens never cross (layout clamp) */
 .ship-lane{position:absolute;left:4%;right:4%;bottom:20%;height:1px;background:linear-gradient(90deg,transparent,#00E5FF44,transparent);z-index:2;pointer-events:none}
 .guide{position:absolute;left:10px;bottom:clamp(6px,1.5vh,10px);z-index:5;background:rgba(10,22,40,.92);border:2px solid #00E5FF;border-radius:14px;padding:6px 10px;font-weight:900;max-width:min(52%,280px);font-size:clamp(.8rem,2vw,.9rem);pointer-events:none}
@@ -442,9 +455,9 @@ function waveSpec(w) {
 }
 
 let score = 0, wave = 0, didEnd = false, shipX = 0.5, shipY = 0;
-let aliens = [], lasers = [], bunkers = [], raf = 0;
+let aliens = [], lasers = [], alienLasers = [], bunkers = [], raf = 0;
 let marchDir = 1, marchN = 0, streak = 0, lastKill = 0;
-let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0;
+let ufo = null, ufoT = 0, shots = 0, pause = false, autoCool = 0, manualCool = 0;
 let powerUps = []; // { el, x, y, type, dy }
 let shieldEnd = 0, rapidEnd = 0, boostEnd = 0, freezeEnd = 0;
 let invincibleEnd = 0; // post-hit invincibility
@@ -537,21 +550,37 @@ function tryLeftShoot(e) {
   if (e) e.preventDefault();
   shoot();
 }
+let fireHold = false; // mouse held in manual fire mode
+function setFireHold(on) { fireHold = on && !didEnd; }
 if (mode.id === 'left' || mode.id === 'left+') {
   stage.addEventListener('click', tryLeftShoot);
-  stage.addEventListener('pointerdown', e => { if (e.button === 0) tryLeftShoot(e); });
+  stage.addEventListener('pointerdown', e => {
+    if (e.button === 0) { tryLeftShoot(e); setFireHold(true); }
+  });
+  stage.addEventListener('pointerup',   () => setFireHold(false));
+  stage.addEventListener('pointercancel', () => setFireHold(false));
+  stage.addEventListener('pointerleave',  () => setFireHold(false));
 }
 if (mode.id === 'right' || mode.id === 'right+') {
   S.bindRight(stage, () => { if (!didEnd) shoot(); }, '用右掣／兩指射');
+  // also support hold for right-click / two-finger tap
+  stage.addEventListener('contextmenu', e => e.preventDefault());
+  stage.addEventListener('pointerdown', e => {
+    if (e.button === 2) { tryLeftShoot(e); setFireHold(true); }
+  });
+  stage.addEventListener('pointerup',     () => setFireHold(false));
+  stage.addEventListener('pointercancel', () => setFireHold(false));
+  stage.addEventListener('pointerleave',  () => setFireHold(false));
 }
 
 function clearField() {
   aliens.forEach(a => a.el && a.el.remove());
   lasers.forEach(l => l.el && l.el.remove());
+  alienLasers.forEach(l => l.el && l.el.remove());
   bunkers.forEach(b => b.el && b.el.remove());
   powerUps.forEach(p => p.el && p.el.remove());
   if (ufo && ufo.el) ufo.el.remove();
-  aliens = []; lasers = []; bunkers = []; powerUps = []; ufo = null;
+  aliens = []; lasers = []; alienLasers = []; bunkers = []; powerUps = []; ufo = null;
   if (raf) { cancelAnimationFrame(raf); raf = 0; }
 }
 
@@ -770,6 +799,40 @@ function activatePowerUp(type) {
     spawnDrone();
     S.toast('🤖 小伙伴出動！');
   }
+  // visual + audio feedback so player knows they got it
+  const r = stage.getBoundingClientRect();
+  const px = shipX * r.width;
+  const py = mode.freeMove ? shipY : r.height - 44;
+  spawnPowerupBurst(px, py, type.color || '#FFD54F');
+  flashScreen();
+  shake();
+  S.sfxOk();
+  type.sound && type.sound();
+  // big "POWER UP!" banner
+  const banner = document.createElement('div');
+  banner.className = 'pu-banner';
+  banner.textContent = type.emoji + ' ' + type.label;
+  banner.style.cssText = 'left:' + (px - 80) + 'px; top:' + (py - 50) + 'px; color:' + (type.color || '#FFD54F');
+  stage.appendChild(banner);
+  setTimeout(() => banner.remove(), 900);
+}
+
+function spawnPowerupBurst(cx, cy, color) {
+  const count = 14;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'pu-burst';
+    const angle = (i / count) * Math.PI * 2;
+    const dist = 30 + Math.random() * 36;
+    const dx = Math.cos(angle) * dist;
+    const dy = Math.sin(angle) * dist;
+    p.style.cssText =
+      'left:' + cx + 'px; top:' + cy + 'px;' +
+      'background:' + color + ';' +
+      '--dx:' + dx + 'px; --dy:' + dy + 'px;';
+    stage.appendChild(p);
+    setTimeout(() => p.remove(), 700);
+  }
 }
 
 /* ── 小伙伴 drone ── */
@@ -914,14 +977,25 @@ var MAX_LASER_AGE = 60;
 function canShoot() {
   if (didEnd || pause) return false;
   if (isRapid()) return true; // rapid fire ignores cooldown
-  if (lasers.some(L => L.player && L.age < MAX_LASER_AGE)) return false; // classic single-shot
-  if (mode.id === 'move' && Date.now() < autoCool) return false;
+  const manualMode = mode.id === 'left' || mode.id === 'left+' || mode.id === 'right' || mode.id === 'right+';
+  if (manualMode) {
+    // manual fire: allow rapid re-fire every HOLD_COOLDOWN ms while held, or instant on click
+    if (Date.now() < manualCool) return false;
+    return true;
+  }
+  // auto move/move+: single-shot until existing laser is older than MAX_LASER_AGE
+  if (lasers.some(L => L.player && L.age < MAX_LASER_AGE)) return false;
+  if (Date.now() < autoCool) return false;
   return true;
 }
 
+const HOLD_COOLDOWN = 220; // ms between shots while held
+
 function shoot() {
   if (!canShoot()) return;
-  if (mode.id === 'move' && !isRapid()) autoCool = Date.now() + 420;
+  const manualMode = mode.id === 'left' || mode.id === 'left+' || mode.id === 'right' || mode.id === 'right+';
+  if (manualMode) manualCool = Date.now() + HOLD_COOLDOWN;
+  else autoCool = Date.now() + 420;
   const r = stage.getBoundingClientRect();
   const sx = shipX * r.width;
   const sy = mode.freeMove ? shipY : r.height - 44;
@@ -1031,6 +1105,76 @@ function spawnUfo() {
   ufo = { el, x: dir > 0 ? -40 : r.width + 8, y: 42, dir, spd: 2.1 + Math.random() * 0.8, bonus: table[shots % 4], alive: true };
 }
 
+/* ── enemy bullets (chaos / blitz themes) ── */
+function alienShootChance() {
+  if (wave < 3) return 0; // grace period (first 2 waves safe)
+  // ramp up: 0.010 at wave 3, +0.004 per wave, capped 0.035
+  // blitz-like difficulty kicks in at high wave numbers
+  return Math.min(0.035, 0.010 + (wave - 3) * 0.004);
+}
+
+function tryAlienShoot() {
+  if (didEnd || pause || isFrozen()) return;
+  if (Math.random() > alienShootChance()) return;
+  if (alienLasers.length > 10) return; // cap concurrent
+  const alive = aliens.filter(a => a.alive && !a._diving);
+  if (alive.length === 0) return;
+  // pick from the bottom 30% — most threatening
+  alive.sort((a, b) => b.y - a.y);
+  const bottom = alive.slice(0, Math.max(3, Math.floor(alive.length * 0.3)));
+  const shooter = bottom[Math.floor(Math.random() * bottom.length)];
+  const el = document.createElement('div');
+  el.className = 'alien-laser';
+  el.style.left = (shooter.x + 14) + 'px';
+  el.style.top  = (shooter.y + 24) + 'px';
+  stage.appendChild(el);
+  alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.6 + Math.random() * 0.6 });
+  // brief red flash on shooter
+  shooter.el.classList.add('shooting');
+  setTimeout(() => shooter.el && shooter.el.classList.remove('shooting'), 120);
+  S.tone(220, 0.04, 'sawtooth', 0.06);
+}
+
+function tickAlienLasers(L) {
+  alienLasers = alienLasers.filter(shot => {
+    shot.y += shot.dy;
+    shot.el.style.top = shot.y + 'px';
+    if (shot.y > L.h + 20) { shot.el.remove(); return false; }
+    // hit bunker
+    for (const b of bunkers) {
+      if (b.hp <= 0) continue;
+      if (shot.x >= b.x - 2 && shot.x <= b.x + b.w + 2 &&
+          shot.y >= b.y - 2 && shot.y <= b.y + b.h + 6) {
+        b.hp -= 1;
+        b.el.classList.remove('d2', 'd1', 'dead');
+        if (b.hp <= 0) b.el.classList.add('dead');
+        else if (b.hp === 1) b.el.classList.add('d1');
+        else b.el.classList.add('d2');
+        shot.el.remove();
+        S.tone(180, 0.05, 'square', 0.05);
+        return false;
+      }
+    }
+    // hit ship
+    const shipTop = L.h - L.shipLane - 12;
+    const shipLeft = shipX * L.w - 28;
+    if (shot.y >= shipTop && shot.y <= shipTop + 30 &&
+        shot.x >= shipLeft && shot.x <= shipLeft + 56) {
+      shot.el.remove();
+      if (isShielded()) {
+        shieldEnd = 0;
+        S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
+        flashScreen(); shake();
+        spawnParticles(shot.x, shipTop, '#00E5FF');
+      } else if (!isInvincible()) {
+        doHit();
+      }
+      return false;
+    }
+    return true;
+  });
+}
+
 function hitBunker(L) {
   for (const b of bunkers) {
     if (b.hp <= 0) continue;
@@ -1058,6 +1202,7 @@ function tick() {
   const maxY = L.alienMaxY - L.alienH;
 
   if ((mode.id === 'move' || mode.id === 'move+') && canShoot()) shoot();
+  if (fireHold && canShoot()) shoot(); // manual hold = rapid fire
 
   ufoT += 1;
   if (ufoT > 55 * 18 && Math.random() < 0.012) { ufoT = 0; spawnUfo(); }
@@ -1102,6 +1247,8 @@ function tick() {
 
   tickPowerUps();
   tickDrone(L);
+  tryAlienShoot();
+  tickAlienLasers(L);
 
   // danger border when alien near ship lane
   if (inDanger()) {
@@ -1167,6 +1314,7 @@ function tick() {
 
   lasers = lasers.filter(laser => {
     laser.age = (laser.age || 0) + 1;
+    laser._px = laser.x; laser._py = laser.y;
     laser.x += laser.dx; laser.y += laser.dy;
     laser.el.style.left = (laser.x - 2.5) + 'px'; laser.el.style.top = laser.y + 'px';
     if (laser.y < -28 || laser.x < -40 || laser.x > L.w + 40) { laser.el.remove(); return false; }
@@ -1181,20 +1329,24 @@ function tick() {
         return false;
       }
     }
+    // swept hit-test: check both previous and current position so fast bullets can't skip
+    const minX = Math.min(laser._px, laser.x), maxX = Math.max(laser._px, laser.x);
+    const minY = Math.min(laser._py, laser.y), maxY = Math.max(laser._py, laser.y);
     for (const a of aliens) {
       if (!a.alive) continue;
       const aw = a._boss ? (a._w || 100) : 32;
       const ah = a._boss ? (a._h || 80) : 32;
       const ax = a._boss ? (a.x + aw/2) : (a.x + 16);
       const ay = a._boss ? (a.y + ah/2) : (a.y + 16);
-      const hitW = a._boss ? aw * 0.42 : 18;
-      const hitH = a._boss ? ah * 0.42 : 18;
-      if (Math.abs(ax - laser.x) < hitW && Math.abs(ay - laser.y) < hitH) {
+      const hitW = a._boss ? aw * 0.5 : 22;
+      const hitH = a._boss ? ah * 0.5 : 22;
+      // AABB overlap between laser segment and alien hit box
+      if (maxX >= ax - hitW && minX <= ax + hitW &&
+          maxY >= ay - hitH && minY <= ay + hitH) {
         laser.el.remove();
         if (laser._drone) a._droneKilled = true;
         if (a._boss) {
           if (bossHit(a, 1, laser)) {
-            // boss died, clear remaining lasers near it
             return false;
           }
         } else {
@@ -1243,7 +1395,8 @@ function start() {
   clearField();
   didEnd = false; userPaused = false; setPausedUI(false);
   score = 0; wave = 0; streak = 0; lastKill = 0;
-  shots = 0; ufoT = 0; autoCool = 0; pause = false; marchDir = 1; marchN = 0;
+  shots = 0; ufoT = 0; autoCool = 0; manualCool = 0; pause = false; marchDir = 1; marchN = 0;
+  fireHold = false;
   shipX = 0.5; shipWrap.style.left = '50%';
   // init shipY once stage has real height
   const L = layout();
