@@ -123,7 +123,7 @@ function renderModes() {
     const b = S.bestOf(m.id);
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'mode' + (m.virtualCtrl || m.keyboardCtrl ? ' alt' : '');
+    btn.className = 'mode' + (m.virtualCtrl || m.keyboardCtrl || m.horizontal ? ' alt' : '');
     const shipPicks = S.SHIPS.map(s =>
       '<div class="ship-pick' + (s.id === currentShip ? ' on' : '') + '" data-ship="' + s.id + '">' +
         '<span class="se">' + s.emoji + '</span>' +

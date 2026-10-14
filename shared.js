@@ -14,7 +14,8 @@
     { id: 'left+',  title: '自由＋左掣', tag: 'XY移 + 左掣射', emoji: '🖱️', skill: '左掣發射', speak: '自由移動，左掣射', freeMove: true },
     { id: 'right+', title: '自由＋右掣', tag: 'XY移 + 右掣射', emoji: '👆', skill: '右掣發射', speak: '自由移動，右掣射', freeMove: true },
     { id: 'ipad', title: 'iPad 觸控', tag: '虛擬鍵盤 · 自動射', emoji: '📱', skill: '觸控左右', speak: 'iPad 模式，自動射', virtualCtrl: true },
-    { id: 'wasd', title: '鍵盤 WASD', tag: '鍵盤 A/D · 自動射', emoji: '⌨️', skill: '鍵盤左右', speak: '鍵盤模式，自動射', keyboardCtrl: true }
+    { id: 'wasd', title: '鍵盤 WASD', tag: '鍵盤 A/D · 自動射', emoji: '⌨️', skill: '鍵盤左右', speak: '鍵盤模式，自動射', keyboardCtrl: true },
+    { id: 'landscape', title: '橫向射擊', tag: '滑鼠上下 · 自動射', emoji: '🛩️', skill: '橫向操作', speak: '橫向射擊，自動射', horizontal: true, freeMove: true }
   ];
 
   // 4 ships, each with unique stats + 1 unique skill

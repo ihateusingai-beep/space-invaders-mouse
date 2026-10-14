@@ -98,6 +98,14 @@ border-radius:3px;pointer-events:none}
 
 /* enemy bullet (chaos/blitz themes) */
 .alien-laser{position:absolute;width:6px;height:18px;border-radius:3px;background:linear-gradient(180deg,#FF5252,#B71C1C);box-shadow:0 0 10px #FF5252,0 0 4px #fff;z-index:4;pointer-events:none}
+.alien-laser.horizontal{width:18px;height:6px;background:linear-gradient(90deg,#B71C1C,#FF5252);box-shadow:0 0 10px #FF5252,0 0 4px #fff}
+/* landscape: player laser fires right (horizontal) */
+.laser.horizontal{width:18px;height:6px;background:linear-gradient(90deg,#00BCD4,#FFD54F 70%,#fff);box-shadow:0 0 8px #00E5FF,0 0 16px #00E5FF,0 0 4px #fff}
+.laser.horizontal::after{left:100%;top:50%;transform:translateY(-50%);width:40px;height:5px;background:linear-gradient(to right,#00E5FF44,transparent)}
+/* landscape mode: background scrolls right-to-left */
+body.landscape .stars{animation:starScroll 18s linear infinite reverse}
+body.landscape .stars2{animation:starScroll 28s linear infinite reverse}
+body.landscape .stars3{animation:starScroll 42s linear infinite reverse}
 /* brief red flash on the alien that's about to shoot */
 .alien.shooting{filter:drop-shadow(0 0 14px #FF5252) brightness(1.5)!important;animation:shootFlash .12s steps(2) 1}
 @keyframes shootFlash{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
@@ -894,6 +902,7 @@ function initShip() {
   ship = S.shipMeta(id);
   document.body.classList.remove('ship-whale','ship-swallow','ship-turtle','ship-phoenix');
   document.body.classList.add('ship-' + ship.id);
+  document.body.classList.toggle('landscape', !!mode.horizontal);
   S.saveShip(ship.id);
   $('shipEl').innerHTML = SHIP_SVGS[ship.id];
   $('shipTag').textContent = ship.emoji + ' ' + ship.name;
@@ -1148,14 +1157,23 @@ window.addEventListener('pointermove', e => {
   // iPad / WASD modes: ship position driven by keys, ignore mouse
   if (mode.id === 'ipad' || mode.id === 'wasd') return;
   const r = stage.getBoundingClientRect();
-  shipX = Math.max(0.06, Math.min(0.94, (e.clientX - r.left) / r.width));
-  shipWrap.style.left = (shipX * 100) + '%';
-  if (mode.freeMove) {
-    // free-move mode: ship Y tracks mouse in lower 65% of stage
-    const minY = r.height * 0.20;  // can't go above 20% from bottom
-    const maxY = r.height * 0.78;  // can't go below ship lane
+  if (mode.horizontal) {
+    // landscape: ship locked to left edge, mouse Y controls ship Y
+    shipX = 0.15;
+    shipWrap.style.left = '15%';
+    const minY = r.height * 0.10;  // allow upper area (more vertical room in landscape)
+    const maxY = r.height * 0.90;
     shipY = Math.max(minY, Math.min(maxY, e.clientY - r.top));
     shipWrap.style.top = shipY + 'px';
+  } else {
+    shipX = Math.max(0.06, Math.min(0.94, (e.clientX - r.left) / r.width));
+    shipWrap.style.left = (shipX * 100) + '%';
+    if (mode.freeMove) {
+      const minY = r.height * 0.20;
+      const maxY = r.height * 0.78;
+      shipY = Math.max(minY, Math.min(maxY, e.clientY - r.top));
+      shipWrap.style.top = shipY + 'px';
+    }
   }
 });
 
@@ -1260,9 +1278,15 @@ function spawnWave() {
       const el = document.createElement('div');
       el.className = 'alien r' + row;
       el.innerHTML = ALIEN_SVG[Math.min(row, ALIEN_SVG.length - 1)];
-      const x = startX + col * gapX;
-      // hard clamp into alien band
-      const y = Math.min(L.alienMaxY - L.alienH, y0 + row * gapY);
+      let x, y;
+      if (mode.horizontal) {
+        // landscape: spawn from RIGHT edge, moving left, single column
+        x = L.w - 60 - col * gapX;
+        y = Math.max(40, Math.min(L.h - 60, 80 + row * gapY));
+      } else {
+        x = startX + col * gapX;
+        y = Math.min(L.alienMaxY - L.alienH, y0 + row * gapY);
+      }
       el.style.left = x + 'px'; el.style.top = y + 'px';
       stage.appendChild(el);
       aliens.push({
@@ -1271,7 +1295,7 @@ function spawnWave() {
       });
     }
   }
-  marchDir = 1; marchN = 0; pause = false;
+  marchDir = mode.horizontal ? -1 : 1; marchN = 0; pause = false;
   eliteCount = 0; miniBossSpawned = false;
   trackingShotActive = false; spreadShotActive = false;
   // mini-boss spawn: wave 3+ (non-boss wave)
@@ -1877,19 +1901,31 @@ function shoot() {
   const sx = shipX * r.width;
   const sy = mode.freeMove ? shipY : r.height - 44;
   shots += 1;
-  const speed = isRapid() ? -20 : -14;
+  // landscape: ship fires RIGHT (horizontal); vertical: fires UP
+  const speed = isRapid() ? 14 : 10;  // positive = right
+  const verticalSpeed = isRapid() ? -20 : -14;  // negative = up
   // bullet pattern: single | double | flame
   const bt = ship ? ship.bulletType : 'single';
   const offsets = bt === 'double' ? [-10, 10] : [0];
   const pierce = bt === 'flame';
-  const laserClass = 'laser' + (bt === 'flame' ? ' flame-laser' : '');
+  const laserClass = 'laser' + (bt === 'flame' ? ' flame-laser' : '') + (mode.horizontal ? ' horizontal' : '');
   offsets.forEach(ox => {
     const el = document.createElement('div');
     el.className = laserClass;
-    el.style.left = (sx - 2.5 + ox) + 'px';
-    el.style.top  = (sy - 26) + 'px';
+    if (mode.horizontal) {
+      // fire right from ship (shipX locked at 0.15, shipY = mouse Y)
+      el.style.left = (sx + 24 + ox) + 'px';
+      el.style.top  = (sy - 2.5) + 'px';
+    } else {
+      el.style.left = (sx - 2.5 + ox) + 'px';
+      el.style.top  = (sy - 26) + 'px';
+    }
     stage.appendChild(el);
-    lasers.push({ el, x: sx + ox, y: sy - 26, dx: 0, dy: speed, player: true, born: Date.now(), _pierce: pierce, _hit: pierce ? new Set() : null });
+    if (mode.horizontal) {
+      lasers.push({ el, x: sx + 24 + ox, y: sy - 2.5 + ox * 0.3, dx: speed, dy: 0, player: true, born: Date.now(), _pierce: pierce, _hit: pierce ? new Set() : null });
+    } else {
+      lasers.push({ el, x: sx + ox, y: sy - 26, dx: 0, dy: verticalSpeed, player: true, born: Date.now(), _pierce: pierce, _hit: pierce ? new Set() : null });
+    }
   });
   S.tone(920, 0.05, 'square', isRapid() ? 0.1 : 0.07);
 }
@@ -2035,23 +2071,33 @@ function tryAlienShoot() {
   if (alienLasers.length > 10) return; // cap concurrent
   const alive = aliens.filter(a => a.alive && !a._diving);
   if (alive.length === 0) return;
-  // pick from the bottom 30% — most threatening
-  alive.sort((a, b) => b.y - a.y);
+  // pick most-threatening aliens (vertical: bottom 30%; landscape: leftmost 30%)
+  if (mode.horizontal) {
+    alive.sort((a, b) => a.x - b.x);  // smallest x = closest to ship
+  } else {
+    alive.sort((a, b) => b.y - a.y);  // largest y = bottom = closest to ship
+  }
   const bottom = alive.slice(0, Math.max(3, Math.floor(alive.length * 0.3)));
   const shooter = bottom[Math.floor(Math.random() * bottom.length)];
 
   // ── spread shot: wave ≥10, every 3rd eligible wave ──
   if (wave >= 10 && wave % 3 === 1 && !spreadShotActive && bottom.length >= 3) {
     spreadShotActive = true;
-    [-14, 0, 14].forEach(dx => {
+    const angles = mode.horizontal ? [Math.PI + 0.22, Math.PI, Math.PI - 0.22] : [-0.22, 0, 0.22];
+    [-14, 0, 14].forEach((dy, i) => {
       const el2 = document.createElement('div');
-      el2.className = 'alien-laser';
-      el2.style.left = (shooter.x + 14 + dx) + 'px';
-      el2.style.top  = (shooter.y + 24) + 'px';
+      el2.className = 'alien-laser' + (mode.horizontal ? ' horizontal' : '');
+      if (mode.horizontal) {
+        el2.style.left = shooter.x + 'px';
+        el2.style.top  = (shooter.y + 14 + dy) + 'px';
+      } else {
+        el2.style.left = (shooter.x + 14 + dy) + 'px';
+        el2.style.top  = (shooter.y + 24) + 'px';
+      }
       stage.appendChild(el2);
-      const angle = dx === 0 ? 0 : dx < 0 ? -0.22 : 0.22;
+      const angle = angles[i];
       const spd = 3.6 + Math.random() * 0.5;
-      alienLasers.push({ el: el2, x: shooter.x + 14 + dx, y: shooter.y + 24, dx: Math.sin(angle) * spd, dy: Math.cos(angle) * spd });
+      alienLasers.push({ el: el2, x: mode.horizontal ? shooter.x : shooter.x + 14 + dy, y: mode.horizontal ? shooter.y + 14 + dy : shooter.y + 24, dx: Math.sin(angle) * spd, dy: Math.cos(angle) * spd });
     });
     shooter.el.classList.add('elite-shoot');
     setTimeout(() => shooter.el && shooter.el.classList.remove('elite-shoot'), 150);
@@ -2063,11 +2109,20 @@ function tryAlienShoot() {
   if (wave >= 7 && !trackingShotActive) {
     trackingShotActive = true;
     const el = document.createElement('div');
-    el.className = 'alien-laser';
-    el.style.left = (shooter.x + 14) + 'px';
-    el.style.top  = (shooter.y + 24) + 'px';
+    el.className = 'alien-laser' + (mode.horizontal ? ' horizontal' : '');
+    if (mode.horizontal) {
+      el.style.left = shooter.x + 'px';
+      el.style.top  = (shooter.y + 14) + 'px';
+    } else {
+      el.style.left = (shooter.x + 14) + 'px';
+      el.style.top  = (shooter.y + 24) + 'px';
+    }
     stage.appendChild(el);
-    alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.8, _tracked: true });
+    if (mode.horizontal) {
+      alienLasers.push({ el, x: shooter.x, y: shooter.y + 14, dx: -3.8, dy: 0, _tracked: true });
+    } else {
+      alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.8, _tracked: true });
+    }
     shooter.el.classList.add('elite-shoot');
     setTimeout(() => shooter.el && shooter.el.classList.remove('elite-shoot'), 150);
     S.tone(300, 0.05, 'sawtooth', 0.08);
@@ -2075,11 +2130,20 @@ function tryAlienShoot() {
   }
 
   const el = document.createElement('div');
-  el.className = 'alien-laser';
-  el.style.left = (shooter.x + 14) + 'px';
-  el.style.top  = (shooter.y + 24) + 'px';
+  el.className = 'alien-laser' + (mode.horizontal ? ' horizontal' : '');
+  if (mode.horizontal) {
+    el.style.left = shooter.x + 'px';
+    el.style.top  = (shooter.y + 14) + 'px';
+  } else {
+    el.style.left = (shooter.x + 14) + 'px';
+    el.style.top  = (shooter.y + 24) + 'px';
+  }
   stage.appendChild(el);
-  alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.6 + Math.random() * 0.6 });
+  if (mode.horizontal) {
+    alienLasers.push({ el, x: shooter.x, y: shooter.y + 14, dx: -3.6 - Math.random() * 0.6, dy: 0 });
+  } else {
+    alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.6 + Math.random() * 0.6 });
+  }
   // brief red flash on shooter
   shooter.el.classList.add('shooting');
   setTimeout(() => shooter.el && shooter.el.classList.remove('shooting'), 120);
@@ -2088,21 +2152,36 @@ function tryAlienShoot() {
 
 function tickAlienLasers(L) {
   alienLasers = alienLasers.filter(shot => {
-    // ── tracking: nudge toward ship ──
+    // ── tracking: nudge toward ship (axis depends on mode) ──
     if (shot._tracked) {
-      const shipCx = shipX * L.w;
-      const dx = shipCx - shot.x;
-      const factor = Math.min(1, Math.abs(dx) / 280) * 0.9;
-      shot.dx += dx > 0 ? factor : -factor;
-      shot.dx = Math.max(-2.5, Math.min(2.5, shot.dx)); // clamp horizontal
+      if (mode.horizontal) {
+        // track Y (alien laser flies LEFT, ship moves up/down)
+        const shipCy = shipY;
+        const dy = shipCy - shot.y;
+        const factor = Math.min(1, Math.abs(dy) / 280) * 0.9;
+        shot.dy += dy > 0 ? factor : -factor;
+        shot.dy = Math.max(-2.5, Math.min(2.5, shot.dy));
+      } else {
+        const shipCx = shipX * L.w;
+        const dx = shipCx - shot.x;
+        const factor = Math.min(1, Math.abs(dx) / 280) * 0.9;
+        shot.dx += dx > 0 ? factor : -factor;
+        shot.dx = Math.max(-2.5, Math.min(2.5, shot.dx));
+      }
     }
     shot.x += shot.dx;
     shot.y += shot.dy;
     shot.el.style.left = shot.x + 'px';
     shot.el.style.top  = shot.y + 'px';
-    if (shot.y > L.h + 20 || shot.x < -20 || shot.x > L.w + 20) { shot.el.remove(); return false; }
-    // hit bunker
-    for (const b of bunkers) {
+    // off-screen check (axis-aware)
+    if (mode.horizontal) {
+      if (shot.x < -20) { shot.el.remove(); return false; }
+    } else {
+      if (shot.y > L.h + 20) { shot.el.remove(); return false; }
+    }
+    if (shot.x > L.w + 20 || shot.y < -20 || shot.y > L.h + 20) { shot.el.remove(); return false; }
+    // hit bunker (only in vertical mode)
+    if (!mode.horizontal) for (const b of bunkers) {
       if (b.hp <= 0) continue;
       if (shot.x >= b.x - 2 && shot.x <= b.x + b.w + 2 &&
           shot.y >= b.y - 2 && shot.y <= b.y + b.h + 6) {
@@ -2116,10 +2195,10 @@ function tickAlienLasers(L) {
         return false;
       }
     }
-    // hit wall (Turtle skill) — placed in front of ship
-    if (Date.now() < wallEnd && wallHitsLeft > 0) {
+    // hit wall (Turtle skill) — only in vertical mode
+    if (!mode.horizontal && Date.now() < wallEnd && wallHitsLeft > 0) {
       const wallX = shipX * L.w;
-      const wallY = (L.h - L.shipLane - 12) - 110; // wall top
+      const wallY = (L.h - L.shipLane - 12) - 110;
       if (shot.x >= wallX - 8 && shot.x <= wallX + 8 &&
           shot.y >= wallY && shot.y <= wallY + 120) {
         shot.el.remove();
@@ -2133,11 +2212,19 @@ function tickAlienLasers(L) {
         return false;
       }
     }
-    // hit ship
-    const shipTop = L.h - L.shipLane - 12;
-    const shipLeft = shipX * L.w - 28;
-    if (shot.y >= shipTop && shot.y <= shipTop + 30 &&
-        shot.x >= shipLeft && shot.x <= shipLeft + 56) {
+    // hit ship (axis-aware: landscape ship is on left, vertical extent)
+    let shipTop, shipLeft;
+    if (mode.horizontal) {
+      shipLeft = shipX * L.w - 28;
+      shipTop = shipY - 28;
+    } else {
+      shipTop = L.h - L.shipLane - 12;
+      shipLeft = shipX * L.w - 28;
+    }
+    const hitW = mode.horizontal ? 56 : 56;
+    const hitH = mode.horizontal ? 56 : 30;
+    if (shot.y >= shipTop && shot.y <= shipTop + hitH &&
+        shot.x >= shipLeft && shot.x <= shipLeft + hitW) {
       shot.el.remove();
       // check ACTIVE shield timer first (NOT charges — isShielded() also true for charges)
       if (Date.now() < shieldEnd) {
@@ -2217,12 +2304,31 @@ function tick() {
         a.x += marchDir * (9 + wave * 0.5);
         if (a.x < 6 || a.x > L.w - 34) hitEdge = true;
       });
-      if (hitEdge) {
-        marchDir *= -1;
+      if (mode.horizontal) {
+        // landscape: march only LEFT, drop Y when bouncing off right wall
+        if (hitEdge) {
+          // bounce: keep moving left, but nudge Y down a bit
+          aliens.forEach(a => {
+            if (!a.alive) return;
+            if (a.y + spec.drop < L.h - 30) a.y += spec.drop;
+          });
+        }
+        // also clamp: when alien reaches left edge (x < 0), remove + threat
         aliens.forEach(a => {
           if (!a.alive) return;
-          if (a.y + spec.drop <= maxY) a.y += spec.drop;
+          if (a.x < -20) {
+            a.alive = false; a.el.classList.add('dead');
+            setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
+          }
         });
+      } else {
+        if (hitEdge) {
+          marchDir *= -1;
+          aliens.forEach(a => {
+            if (!a.alive) return;
+            if (a.y + spec.drop <= maxY) a.y += spec.drop;
+          });
+        }
       }
       beat();
     }
@@ -2266,7 +2372,14 @@ function tick() {
     for (const a of aliens) {
       if (!a.alive) continue;
       const ah = a._boss ? a._h : L.alienH;
-      if (a.y + ah * 0.85 >= shipTop) {
+      let threatened = false;
+      if (mode.horizontal) {
+        // landscape: alien reaches ship area (left side) = threat
+        if (a.x < 90) threatened = true;
+      } else {
+        if (a.y + ah * 0.85 >= shipTop) threatened = true;
+      }
+      if (threatened) {
         a.alive = false; a.el.classList.add('dead');
         setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
         if (a._hpBar && a._hpBar.parentNode) a._hpBar.remove();
