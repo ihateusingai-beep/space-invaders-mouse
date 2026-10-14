@@ -128,6 +128,13 @@ border-radius:3px;pointer-events:none}
 .drone.fading{opacity:0;transition:.4s}
 @keyframes droneBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-4px) rotate(3deg)}}
 .drone-laser{color:#00E5FF!important;font-size:1.4rem;line-height:1;text-shadow:0 0 4px #00E5FF,0 0 8px #00E5FF;z-index:5}
+.elite-glow{animation:eliteGlow 0.7s ease-in-out infinite alternate}
+@keyframes eliteGlow{0%{filter:drop-shadow(0 0 6px #FF6B9D) brightness(1)}100%{filter:drop-shadow(0 0 18px #FF1744) brightness(1.4)}}
+.elite-shoot{animation:eliteShoot 0.12s ease-out}
+@keyframes eliteShoot{0%{filter:brightness(2)}100%{filter:none}}
+.shield-count{display:inline-block;margin-left:8px;font-size:.75rem;color:#00E5FF;font-weight:700}
+.bonus-active{animation:bonusPulse 0.5s ease-in-out infinite alternate}
+@keyframes bonusPulse{0%{text-shadow:0 0 6px #FFD54F}100%{text-shadow:0 0 18px #FF6B9D,0 0 30px #FFD54F}}
 .album-modal{width:min(560px,94vw);max-height:90vh;overflow:auto;position:relative;padding:18px 16px}
 .album-close{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;background:#eee;border:2px solid #426eb4;color:#426eb4;font-size:1.1rem;font-weight:900;cursor:pointer}
 .album-modal h2{font-size:1.4rem;margin-bottom:10px}
@@ -462,6 +469,12 @@ let powerUps = []; // { el, x, y, type, dy }
 let shieldEnd = 0, rapidEnd = 0, boostEnd = 0, freezeEnd = 0;
 let invincibleEnd = 0; // post-hit invincibility
 let userPaused = false;
+let shieldCount = 3; // capacity: 3 shields max
+let bonusTimeEnd = 0; // bonus time flag (timestamp)
+let eliteCount = 0;   // total elite aliens spawned this wave
+let miniBossSpawned = false; // mini-boss spawned for current wave
+let trackingShotActive = false; // one tracking shot per wave (wave ≥7)
+let spreadShotActive = false;  // one spread shot per eligible wave (wave ≥10, every 3)
 
 const stage = $('stage'), shipWrap = $('shipWrap');
 const displayName = (function () {
@@ -598,11 +611,14 @@ function updateHUDTrophies() {
     { end: boostEnd,  emoji: '💎', label: '雙倍' },
     { end: freezeEnd, emoji: '❄️', label: '暫停' },
   ].filter(p => Date.now() < p.end);
-  if (active.length === 0) { el.textContent = ''; return; }
-  el.textContent = active.map(p => {
+  // always show shield capacity count if any charges exist
+  const parts = active.map(p => {
     const sec = Math.ceil((p.end - now) / 1000);
     return p.emoji + ' ' + sec + 's';
-  }).join('  ');
+  });
+  if (shieldCount > 0) parts.push('🛡️ ×' + shieldCount);
+  if (parts.length === 0) { el.textContent = ''; return; }
+  el.textContent = parts.join('  ');
 }
 
 function spawnBunkers(n) {
@@ -654,6 +670,28 @@ function spawnWave() {
     }
   }
   marchDir = 1; marchN = 0; pause = false;
+  eliteCount = 0; miniBossSpawned = false;
+  trackingShotActive = false; spreadShotActive = false;
+  // mini-boss spawn: wave 3+ (non-boss wave)
+  if (wave >= 3 && wave % 5 !== 0) {
+    const pool = aliens.filter(a => a.alive);
+    if (pool.length > 0) {
+      const boss = pool[Math.floor(Math.random() * pool.length)];
+      boss._elite = true; boss._hp = 2; eliteCount++;
+      boss.pts = 60 + wave * 5;
+      boss.el.classList.add('elite-glow');
+      boss.el.style.fontSize = '1.5rem';
+      // red-pulse mini-boss indicator
+      const label = document.createElement('div');
+      label.style.cssText = 'position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:.6rem;font-weight:900;color:#FF1744;white-space:nowrap;text-shadow:0 0 4px #FF1744';
+      label.textContent = '⚡ MINI-BOSS ⚡';
+      boss.el.style.position = 'relative';
+      boss.el.appendChild(label);
+      S.toast('⚡ MINI-BOSS 出現！');
+      S.tone(440, 0.15, 'sawtooth', 0.2);
+      miniBossSpawned = true;
+    }
+  }
   spawnBunkers(spec.bunkers);
   setHUD();
   S.toast('WAVE ' + wave + ' · ' + spec.rows + '×' + spec.cols);
@@ -749,8 +787,10 @@ const PU_TYPES = [
   { id: 'drone',  emoji: '🤖', label: '小伙伴', color: '#A5F3FC', dur: 20000, sound: () => S.tone(880, 0.1, 'square', 0.10) },
 ];
 
-function spawnPowerUp(x, y) {
-  if (Math.random() > 0.18) return; // 18% drop chance
+function spawnPowerUp(x, y, force) {
+  // bonus time: ×3 spawn rate; force = guaranteed drop (elite kill)
+  const rate = force ? 1 : (Date.now() < bonusTimeEnd) ? 0.54 : 0.18;
+  if (!force && Math.random() > rate) return;
   const type = PU_TYPES[Math.floor(Math.random() * PU_TYPES.length)];
   const el = document.createElement('div');
   el.className = 'pu pu-' + type.id;
@@ -784,8 +824,9 @@ function tickPowerUps() {
 function activatePowerUp(type) {
   const now = Date.now();
   if (type.id === 'shield') {
+    shieldCount = Math.min(3, shieldCount + 1);
     shieldEnd = now + type.dur;
-    S.toast('🛡️ 護盾 ' + (type.dur / 1000) + ' 秒');
+    S.toast('🛡️ 護盾 ×' + shieldCount + ' (' + (type.dur / 1000) + ' 秒)');
   } else if (type.id === 'rapid') {
     rapidEnd = now + type.dur;
     S.toast('⚡ 連射 ' + (type.dur / 1000) + ' 秒');
@@ -916,7 +957,7 @@ function flashScreen() {
   f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 80);
 }
 
-function isShielded()  { return Date.now() < shieldEnd; }
+function isShielded()  { return Date.now() < shieldEnd || shieldCount > 0; }
 function isRapid()    { return Date.now() < rapidEnd; }
 function isBoosted()  { return Date.now() < boostEnd; }
 function isFrozen()   { return Date.now() < freezeEnd; }
@@ -1039,6 +1080,19 @@ function addScore(pts) {
 
 function killAlien(a, pts) {
   if (!a.alive) return;
+
+  // ── mini-boss HP check ──
+  if (a._elite && a._hp > 1) {
+    a._hp--;
+    a.el.classList.add('hit-flash');
+    S.tone(330, 0.1, 'sawtooth', 0.15);
+    spawnParticles(a.x + 16, a.y + 16, '#FF1744');
+    setTimeout(() => a.el.classList.remove('hit-flash'), 100);
+    shake();
+    flashScreen();
+    return; // not dead yet
+  }
+
   a.alive = false;
   if (a._droneKilled) droneKill(a);
   // hit-flash then death
@@ -1054,26 +1108,37 @@ function killAlien(a, pts) {
   boom2.style.left = (a.x + 6) + 'px'; boom2.style.top = (a.y + 4) + 'px';
   stage.appendChild(boom2); setTimeout(() => boom2.remove(), 310);
   setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 110);
+
   const now = Date.now();
   streak = (now - lastKill < 1400) ? streak + 1 : 1;
   lastKill = now;
   const c = $('combo');
   if (streak >= 2) {
     c.textContent = '連撃 ×' + streak + (streak >= 4 ? ' 🔥' : '');
+    c.style.display = 'block';
     c.classList.add('on');
     clearTimeout(c._t); c._t = setTimeout(() => c.classList.remove('on'), 850);
   }
   if (streak >= 10) achUnlock('combo10');
+
+  // combo multiplier: ×1 / ×2 / ×3
+  const mult = streak >= 10 ? 3 : streak >= 5 ? 2 : 1;
   const base = pts || a.pts;
-  const gain = (isBoosted() ? base * 2 : base) + (streak >= 3 ? 10 : 0);
+  const gain = Math.round((isBoosted() ? base * 2 : base + (streak >= 3 ? 10 : 0)) * mult);
   addScore(gain);
-  const popEl = scorePop(a.x, a.y, '+' + gain);
-  if (isBoosted()) popEl.classList.add('big-pop');
+  const popEl = scorePop(a.x, a.y, mult > 1 ? '+' + gain + ' ×' + mult : '+' + gain);
+  if (isBoosted() || mult > 1) popEl.classList.add('big-pop');
   S.sfxOk(); shake();
   if (!isFrozen()) beat();
   flashScreen();
-  // power-up drop
-  if (alive() > 0) spawnPowerUp(a.x + 16, a.y);
+
+  // power-up drop (guaranteed on elite kill, normal drop otherwise)
+  const isEliteKill = !!a._elite;
+  if (isEliteKill) {
+    // guaranteed power-up drop
+    spawnPowerUp(a.x + 16, a.y, true);
+  }
+  if (alive() > 0) spawnPowerUp(a.x + 16, a.y, false);
   if (alive() === 0) onWaveClear();
 }
 
@@ -1083,8 +1148,14 @@ function onWaveClear() {
   // wave clear bonus
   const bonus = 50 + wave * 25;
   addScore(bonus);
+  // instant bonus pop
+  const L = layout();
+  const popEl = scorePop(L.w / 2, L.h / 2, '+' + bonus + ' ⭐');
+  popEl.classList.add('big-pop');
+  // bonus time: ×3 power-up spawn rate for 3 seconds
+  bonusTimeEnd = Date.now() + 3000;
   showWaveClear();
-  S.toast('波數獎勵 +' + bonus);
+  S.toast('波數獎勵 +' + bonus + ' · BONUS TIME!');
   if (wave >= 5) achUnlock('wave5');
   if (wave >= 5 && score >= 1000) achUnlock('perfect5');
   setTimeout(() => {
@@ -1123,6 +1194,41 @@ function tryAlienShoot() {
   alive.sort((a, b) => b.y - a.y);
   const bottom = alive.slice(0, Math.max(3, Math.floor(alive.length * 0.3)));
   const shooter = bottom[Math.floor(Math.random() * bottom.length)];
+
+  // ── spread shot: wave ≥10, every 3rd eligible wave ──
+  if (wave >= 10 && wave % 3 === 1 && !spreadShotActive && bottom.length >= 3) {
+    spreadShotActive = true;
+    [-14, 0, 14].forEach(dx => {
+      const el2 = document.createElement('div');
+      el2.className = 'alien-laser';
+      el2.style.left = (shooter.x + 14 + dx) + 'px';
+      el2.style.top  = (shooter.y + 24) + 'px';
+      stage.appendChild(el2);
+      const angle = dx === 0 ? 0 : dx < 0 ? -0.22 : 0.22;
+      const spd = 3.6 + Math.random() * 0.5;
+      alienLasers.push({ el: el2, x: shooter.x + 14 + dx, y: shooter.y + 24, dx: Math.sin(angle) * spd, dy: Math.cos(angle) * spd });
+    });
+    shooter.el.classList.add('elite-shoot');
+    setTimeout(() => shooter.el && shooter.el.classList.remove('elite-shoot'), 150);
+    S.tone(180, 0.06, 'sawtooth', 0.08);
+    return;
+  }
+
+  // ── tracking shot: wave ≥7, once per wave ──
+  if (wave >= 7 && !trackingShotActive) {
+    trackingShotActive = true;
+    const el = document.createElement('div');
+    el.className = 'alien-laser';
+    el.style.left = (shooter.x + 14) + 'px';
+    el.style.top  = (shooter.y + 24) + 'px';
+    stage.appendChild(el);
+    alienLasers.push({ el, x: shooter.x + 14, y: shooter.y + 24, dx: 0, dy: 3.8, _tracked: true });
+    shooter.el.classList.add('elite-shoot');
+    setTimeout(() => shooter.el && shooter.el.classList.remove('elite-shoot'), 150);
+    S.tone(300, 0.05, 'sawtooth', 0.08);
+    return;
+  }
+
   const el = document.createElement('div');
   el.className = 'alien-laser';
   el.style.left = (shooter.x + 14) + 'px';
@@ -1137,9 +1243,19 @@ function tryAlienShoot() {
 
 function tickAlienLasers(L) {
   alienLasers = alienLasers.filter(shot => {
+    // ── tracking: nudge toward ship ──
+    if (shot._tracked) {
+      const shipCx = shipX * L.w;
+      const dx = shipCx - shot.x;
+      const factor = Math.min(1, Math.abs(dx) / 280) * 0.9;
+      shot.dx += dx > 0 ? factor : -factor;
+      shot.dx = Math.max(-2.5, Math.min(2.5, shot.dx)); // clamp horizontal
+    }
+    shot.x += shot.dx;
     shot.y += shot.dy;
-    shot.el.style.top = shot.y + 'px';
-    if (shot.y > L.h + 20) { shot.el.remove(); return false; }
+    shot.el.style.left = shot.x + 'px';
+    shot.el.style.top  = shot.y + 'px';
+    if (shot.y > L.h + 20 || shot.x < -20 || shot.x > L.w + 20) { shot.el.remove(); return false; }
     // hit bunker
     for (const b of bunkers) {
       if (b.hp <= 0) continue;
@@ -1164,6 +1280,13 @@ function tickAlienLasers(L) {
       if (isShielded()) {
         shieldEnd = 0;
         S.toast('🛡️ 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
+        flashScreen(); shake();
+        spawnParticles(shot.x, shipTop, '#00E5FF');
+      } else if (shieldCount > 0) {
+        // shield capacity: consume one shield charge
+        shieldCount--;
+        setHUD();
+        S.toast('🛡️ ×' + shieldCount + ' 擋住！'); S.tone(220, 0.2, 'sawtooth', 0.1);
         flashScreen(); shake();
         spawnParticles(shot.x, shipTop, '#00E5FF');
       } else if (!isInvincible()) {
@@ -1396,6 +1519,7 @@ function start() {
   didEnd = false; userPaused = false; setPausedUI(false);
   score = 0; wave = 0; streak = 0; lastKill = 0;
   shots = 0; ufoT = 0; autoCool = 0; manualCool = 0; pause = false; marchDir = 1; marchN = 0;
+  shieldCount = 3; bonusTimeEnd = 0;
   fireHold = false;
   shipX = 0.5; shipWrap.style.left = '50%';
   // init shipY once stage has real height
