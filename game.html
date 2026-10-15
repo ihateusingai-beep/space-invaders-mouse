@@ -47,6 +47,16 @@ background-image:radial-gradient(2px 2px at 15% 45%,#fff,transparent),radial-gra
 .alien.r1{animation:alienPulse 2.0s ease-in-out infinite .3s}
 .alien.r2{animation:alienPulse 2.6s ease-in-out infinite .6s}
 .alien.r3{animation:alienPulse 2.2s ease-in-out infinite .9s}
+/* special alien types */
+@keyframes kamikazePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+.alien-kamikaze{animation:kamikazePulse .35s ease-in-out infinite}
+.alien-stealth{transition:opacity .4s}
+.alien-healer{filter:drop-shadow(0 0 6px #69F0AE)}
+.alien-armored{box-shadow:0 0 12px #FFB300, inset 0 0 8px #FFB30044}
+.alien-splitter{filter:drop-shadow(0 0 8px #CE93D8)}
+/* healer aura pulse when active */
+@keyframes healerAura{0%,100%{box-shadow:0 0 6px #69F0AE}50%{box-shadow:0 0 18px #69F0AE,0 0 30px #69F0AE66}}
+.alien-healer.aura-active{animation:healerAura .4s ease-in-out}
 /* F: power-up icon slow rotate */
 @keyframes puSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 .pu svg{animation:puSpin 8s linear infinite}
@@ -1258,6 +1268,54 @@ function spawnBunkers(n) {
   }
 }
 
+/* ── alien types (5 special behaviors + normal) ── */
+const ALIEN_KINDS = {
+  normal:   { color: '#FFFFFF', bonus: 0,  hp: 1, label: '' },
+  kamikaze: { color: '#FF1744', bonus: 5,  hp: 1, label: '🔥' },
+  stealth:  { color: '#80DEEA', bonus: 8,  hp: 1, label: '👻' },
+  healer:   { color: '#69F0AE', bonus: 6,  hp: 1, label: '➕' },
+  armored:  { color: '#FFB300', bonus: 10, hp: 2, label: '🛡' },
+  splitter: { color: '#CE93D8', bonus: 12, hp: 1, label: '💥' },
+};
+function pickAlienKind() {
+  const r = Math.random();
+  if (r < 0.60) return 'normal';
+  if (r < 0.70) return 'kamikaze';
+  if (r < 0.80) return 'stealth';
+  if (r < 0.87) return 'healer';
+  if (r < 0.95) return 'armored';
+  return 'splitter';
+}
+function kindBonus(k) { return ALIEN_KINDS[k] ? ALIEN_KINDS[k].bonus : 0; }
+function applyAlienKind(el, kind) {
+  if (kind === 'normal') return;
+  const def = ALIEN_KINDS[kind];
+  el.classList.add('alien-' + kind);
+  // small badge
+  const badge = document.createElement('div');
+  badge.className = 'alien-badge';
+  badge.textContent = def.label;
+  badge.style.cssText = 'position:absolute;top:-10px;right:-6px;font-size:.85rem;line-height:1;z-index:4;pointer-events:none;text-shadow:0 0 4px ' + def.color;
+  el.style.position = 'relative';
+  el.appendChild(badge);
+  if (kind === 'armored') {
+    // shield ring overlay
+    el.style.boxShadow = '0 0 12px ' + def.color + ', inset 0 0 8px ' + def.color + '44';
+  }
+  if (kind === 'stealth') {
+    el.style.opacity = '0.4';
+  }
+  if (kind === 'kamikaze') {
+    el.style.filter = 'drop-shadow(0 0 8px ' + def.color + ') hue-rotate(-10deg)';
+  }
+  if (kind === 'healer') {
+    el.style.filter = 'drop-shadow(0 0 6px ' + def.color + ')';
+  }
+  if (kind === 'splitter') {
+    el.style.filter = 'drop-shadow(0 0 6px ' + def.color + ')';
+  }
+}
+
 function spawnWave() {
   const L = layout();
   wave += 1;
@@ -1289,9 +1347,12 @@ function spawnWave() {
       }
       el.style.left = x + 'px'; el.style.top = y + 'px';
       stage.appendChild(el);
+      // pick alien kind (60% normal + 5 special types)
+      const kind = pickAlienKind();
+      applyAlienKind(el, kind);
       aliens.push({
-        el, x, y, alive: true, wiggle: col * 0.3 + row, _row: row,
-        pts: ROW_PTS[Math.min(row, ROW_PTS.length - 1)] + Math.min(20, (wave - 1) * 2)
+        el, x, y, alive: true, wiggle: col * 0.3 + row, _row: row, _kind: kind,
+        pts: ROW_PTS[Math.min(row, ROW_PTS.length - 1)] + Math.min(20, (wave - 1) * 2) + kindBonus(kind)
       });
     }
   }
@@ -1974,6 +2035,39 @@ function killAlien(a, pts) {
     return; // not dead yet
   }
 
+  // ── armored (2 HP) check ──
+  if (a._kind === 'armored' && !a._armoredHit) {
+    a._armoredHit = true;
+    a._hp = 1;
+    a.el.classList.add('hit-flash');
+    S.tone(440, 0.1, 'square', 0.15);
+    spawnParticles(a.x + 16, a.y + 16, '#FFB300');
+    setTimeout(() => a.el.classList.remove('hit-flash'), 100);
+    // visual: orange tint flashes, ring dims
+    a.el.style.boxShadow = '0 0 6px #FF1744, inset 0 0 4px #FF174466';
+    shake();
+    return; // not dead yet
+  }
+
+  // ── splitter: spawn 2 mini aliens on death ──
+  if (a._kind === 'splitter' && !a._split) {
+    a._split = true;
+    const cx = a.x + 16, cy = a.y + 16;
+    [-1, 1].forEach((side, idx) => {
+      const child = document.createElement('div');
+      child.className = 'alien alien-splitter child';
+      child.style.cssText = 'left:' + (cx - 12) + 'px; top:' + (cy - 12) + 'px; font-size:.8rem; opacity:.8';
+      child.innerHTML = ALIEN_SVG[Math.min(a._row !== undefined ? a._row : 0, ALIEN_SVG.length - 1)];
+      stage.appendChild(child);
+      aliens.push({
+        el: child, x: cx - 12 + side * 4, y: cy - 12, alive: true, wiggle: 0, _row: a._row,
+        _kind: 'normal', pts: 5, _child: true, _vx: side * 1.5, _vy: -0.8
+      });
+    });
+    S.tone(660, 0.1, 'sine', 0.15);
+    spawnParticles(cx, cy, '#CE93D8');
+  }
+
   a.alive = false;
   if (a._droneKilled) droneKill(a);
   // hit-flash then death
@@ -1981,7 +2075,13 @@ function killAlien(a, pts) {
   setTimeout(() => { a.el.classList.remove('hit-flash'); a.el.classList.add('dead'); }, 80);
   // row-matched debris colors
   const colors = ['#CE93D8', '#EF9A9A', '#80DEEA', '#A5D6A7'];
-  spawnParticles(a.x + 16, a.y + 16, colors[a._row !== undefined ? a._row : 0] || '#A5D6A7');
+  const deathColor = (a._kind === 'kamikaze') ? '#FF1744'
+    : (a._kind === 'stealth') ? '#80DEEA'
+    : (a._kind === 'healer') ? '#69F0AE'
+    : (a._kind === 'armored') ? '#FFB300'
+    : (a._kind === 'splitter') ? '#CE93D8'
+    : (colors[a._row !== undefined ? a._row : 0] || '#A5D6A7');
+  spawnParticles(a.x + 16, a.y + 16, deathColor);
   const boom = document.createElement('div'); boom.className = 'boom'; boom.innerHTML = BOOM_SVG;
   boom.style.left = a.x + 'px'; boom.style.top = a.y + 'px';
   stage.appendChild(boom); setTimeout(() => boom.remove(), 360);
@@ -2332,6 +2432,97 @@ function tick() {
       }
       beat();
     }
+  }
+
+  // ── special alien type behaviors (per-frame) ──
+  if (!isFrozen()) {
+    const now = Date.now();
+    aliens.forEach(a => {
+      if (!a.alive || a._boss || a._elite) return;
+      // splitter child: fly outward
+      if (a._child) {
+        a.x += (a._vx || 0); a.y += (a._vy || 0);
+        a._vy = (a._vy || 0) + 0.06; // gravity
+        a.el.style.left = a.x + 'px';
+        a.el.style.top = a.y + 'px';
+        if (a.y > L.h + 20 || a.x < -30 || a.x > L.w + 30) {
+          a.alive = false; a.el.classList.add('dead');
+          setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 80);
+        }
+        return;
+      }
+      // kamikaze: dive toward ship (slight velocity nudge)
+      if (a._kind === 'kamikaze') {
+        const sx = shipX * L.w, sy = mode.horizontal ? shipY : (L.h - 28);
+        const tx = mode.horizontal ? a.x : sx;
+        const ty = mode.horizontal ? sy : a.y;
+        const dx = tx - a.x, dy = ty - a.y;
+        const d = Math.hypot(dx, dy) || 1;
+        a.x += (dx / d) * 1.6;
+        a.y += (dy / d) * 1.6;
+        a.el.style.left = a.x + 'px';
+        a.el.style.top = a.y + 'px';
+        // kamikaze hits ship → threat (lose life)
+        if (!mode.horizontal) {
+          if (a.y + 24 >= L.h - L.shipLane - 12 && Math.abs(a.x + 16 - sx) < 32) {
+            a.alive = false; a.el.classList.add('dead');
+            setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 80);
+            spawnParticles(a.x + 16, a.y + 16, '#FF1744');
+            if (Date.now() < shieldEnd) {
+              shieldEnd = 0; S.toast('🛡️ 擋住！');
+            } else if (shieldCount > 0) {
+              shieldCount--; if (shieldCount === 0) shieldEnd = 0; renderLives();
+              S.toast('🛡️ ×' + shieldCount + ' 擋住！');
+            } else if (!isInvincible()) doHit();
+          }
+        } else {
+          if (a.x < 60 && Math.abs(a.y + 16 - sy) < 32) {
+            a.alive = false; a.el.classList.add('dead');
+            setTimeout(() => { if (a.el.parentNode) a.el.remove(); }, 80);
+            spawnParticles(a.x + 16, a.y + 16, '#FF1744');
+            if (Date.now() < shieldEnd) {
+              shieldEnd = 0; S.toast('🛡️ 擋住！');
+            } else if (shieldCount > 0) {
+              shieldCount--; if (shieldCount === 0) shieldEnd = 0; renderLives();
+              S.toast('🛡️ ×' + shieldCount + ' 擋住！');
+            } else if (!isInvincible()) doHit();
+          }
+        }
+        return;
+      }
+      // stealth: toggle visibility every 3s
+      if (a._kind === 'stealth') {
+        const phase = Math.floor(now / 3000) % 2;
+        a.el.style.opacity = phase ? '1' : '0.35';
+        return;
+      }
+      // healer: every 5s, heal nearest alive alien
+      if (a._kind === 'healer') {
+        a._healCool = (a._healCool || 0) - 16;
+        if (a._healCool <= 0) {
+          a._healCool = 5000;
+          // find closest alive alien and remove 'dead' tag (visual)
+          let closest = null, bestD = Infinity;
+          aliens.forEach(o => {
+            if (o === a || !o.alive || o._kind === 'healer') return;
+            const d = Math.hypot(o.x - a.x, o.y - a.y);
+            if (d < bestD && d < 200) { bestD = d; closest = o; }
+          });
+          if (closest) {
+            // visual: flash green aura
+            a.el.classList.add('aura-active');
+            setTimeout(() => a.el.classList.remove('aura-active'), 400);
+            // small green pulse
+            const pulse = document.createElement('div');
+            pulse.style.cssText = 'position:absolute;left:' + a.x + 'px;top:' + a.y + 'px;width:60px;height:60px;border-radius:50%;background:radial-gradient(circle,#69F0AE 0%,transparent 70%);pointer-events:none;z-index:3;animation:puFlash .35s ease-out forwards;color:#69F0AE';
+            stage.appendChild(pulse);
+            setTimeout(() => pulse.remove(), 400);
+            S.tone(880, 0.06, 'sine', 0.1);
+          }
+        }
+        return;
+      }
+    });
   }
 
   // boss: side-to-side slow movement + bobbing
