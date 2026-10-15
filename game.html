@@ -137,6 +137,22 @@ body.landscape .stars3{animation:starScroll 42s linear infinite reverse}
 /* multi: gold aura around ship */
 .multi-aura{position:absolute;border-radius:50%;border:3px solid #FFD54F;pointer-events:none;z-index:5;box-shadow:0 0 18px #FFD54F,inset 0 0 12px #FFD54F44;animation:multiAura 1s ease-in-out infinite}
 @keyframes multiAura{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}
+/* stage theme backgrounds */
+body.stage-asteroid .stage{background:radial-gradient(ellipse 80% 45% at 50% 0%,#3E272355,transparent 60%),linear-gradient(180deg,#1A0F00,#3E2727 55%,#0F0800 100%)}
+body.stage-asteroid .stars{opacity:.3}
+body.stage-nebula .stage{background:radial-gradient(ellipse 80% 45% at 50% 0%,#4A148C55,transparent 60%),linear-gradient(180deg,#1A0033,#2D1B4E 55%,#0A0014 100%)}
+body.stage-nebula .stage::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 30%, #CE93D844 0%, transparent 40%),radial-gradient(ellipse at 70% 70%, #9C27B044 0%, transparent 50%);pointer-events:none;z-index:1;animation:nebulaDrift 12s ease-in-out infinite}
+@keyframes nebulaDrift{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(2deg)}}
+body.stage-mothership .stage{background:radial-gradient(ellipse 80% 45% at 50% 0%,#B71C1C77,transparent 60%),linear-gradient(180deg,#1A0000,#3F0F0F 55%,#0A0000 100%)}
+body.stage-mothership .stage::after{background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,23,68,.06) 3px 4px)}
+/* asteroid hazard (小行星帶 stage) */
+.stage-asteroid{position:absolute;background:radial-gradient(circle at 30% 30%,#9E9E9E,#424242 70%,#212121);border-radius:40% 60% 50% 50%;pointer-events:none;z-index:2;box-shadow:inset -3px -3px 8px rgba(0,0,0,.5),inset 2px 2px 4px rgba(255,255,255,.15)}
+.stage-asteroid::before{content:"";position:absolute;top:20%;left:30%;width:30%;height:20%;background:rgba(0,0,0,.3);border-radius:50%}
+.stage-asteroid::after{content:"";position:absolute;top:50%;left:60%;width:20%;height:15%;background:rgba(0,0,0,.25);border-radius:50%}
+.stage-asteroid.hit{animation:asteroidHit .2s ease-out forwards}
+@keyframes asteroidHit{0%{opacity:1;transform:rotate(var(--rot,0)) scale(1)}100%{opacity:0;transform:rotate(var(--rot,0)) scale(1.5)}}
+/* stage intro banner animation */
+@keyframes stageIn{0%{opacity:0;transform:translateX(-50%) scale(.5);letter-spacing:20px}15%{opacity:1;transform:translateX(-50%) scale(1.1);letter-spacing:4px}25%{transform:translateX(-50%) scale(1)}85%{opacity:1}100%{opacity:0;transform:translateX(-50%) scale(.9);letter-spacing:8px}}
 /* hit feedback (HP lost) */
 .hit-red{position:fixed;inset:0;pointer-events:none;z-index:25;background:radial-gradient(circle, #FF1744 0%, transparent 70%);opacity:0;animation:hitRed .5s ease-out forwards}
 @keyframes hitRed{0%{opacity:.7}100%{opacity:0}}
@@ -1053,6 +1069,8 @@ function tickWall(L) {
 let wallEl = null;
 let slowmoEl = null;
 let multiAuraEl = null;
+let currentStage = 'space';
+let asteroids = []; // stage asteroid hazards
 
 // Phoenix 烈焰環 — 360° 8-bullet burst around ship
 function skillRing() {
@@ -1327,6 +1345,25 @@ function applyAlienKind(el, kind) {
 function spawnWave() {
   const L = layout();
   wave += 1;
+  // ── stage theme system ──
+  const stage = wave <= 5 ? 'space' : wave <= 10 ? 'asteroid' : wave <= 15 ? 'nebula' : 'mothership';
+  document.body.classList.remove('stage-space','stage-asteroid','stage-nebula','stage-mothership');
+  document.body.classList.add('stage-' + stage);
+  if (currentStage !== stage) {
+    currentStage = stage;
+    // stage intro banner
+    const names = { space: '太空', asteroid: '小行星帶', nebula: '星雲', mothership: '異形主艦' };
+    const colors = { space: '#00E5FF', asteroid: '#FFA726', nebula: '#CE93D8', mothership: '#FF1744' };
+    S.toast('STAGE ' + Math.ceil(wave / 5) + ' · ' + (names[stage] || stage), false, 2000);
+    // brief stage banner
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:absolute;left:50%;top:30%;transform:translateX(-50%);z-index:20;font-size:1.6rem;font-weight:900;color:' + (colors[stage] || '#FFFFFF') + ';text-shadow:0 0 20px currentColor,0 0 40px currentColor;letter-spacing:4px;pointer-events:none;animation:stageIn 2.5s ease-out forwards';
+    banner.textContent = 'STAGE ' + Math.ceil(wave / 5) + ' · ' + (names[stage] || stage);
+    stage.appendChild(banner);
+    setTimeout(() => banner.remove(), 2600);
+    // spawn stage-specific hazards
+    if (stage === 'asteroid') spawnAsteroids();
+  }
   // Boss wave (every 5 waves)
   if (wave > 1 && wave % 5 === 0) {
     spawnBoss();
@@ -2251,6 +2288,63 @@ function onWaveClear() {
   }, 1000);
 }
 
+/* ── stage hazards: asteroids (小行星帶 stage) ── */
+function spawnAsteroids() {
+  // clear existing
+  asteroids.forEach(a => { if (a.el.parentNode) a.el.remove(); });
+  asteroids = [];
+  const L = layout();
+  for (let i = 0; i < 3; i++) {
+    const el = document.createElement('div');
+    el.className = 'stage-asteroid';
+    const size = 22 + Math.random() * 18;
+    el.style.cssText = 'left:' + (L.w * 0.2 + Math.random() * L.w * 0.6) + 'px; top:-30px; width:' + size + 'px; height:' + size + 'px;';
+    stage.appendChild(el);
+    asteroids.push({
+      el, x: parseFloat(el.style.left), y: -30,
+      vx: (Math.random() - 0.5) * 0.6,
+      vy: 0.8 + Math.random() * 0.6,
+      size: size,
+      rot: 0, vr: (Math.random() - 0.5) * 4
+    });
+  }
+}
+
+function tickAsteroids() {
+  if (asteroids.length === 0) return;
+  const L = layout();
+  const sx = shipX * L.w;
+  const sy = mode.freeMove ? shipY : (L.h - 28);
+  asteroids = asteroids.filter(a => {
+    a.x += a.vx; a.y += a.vy;
+    a.rot += a.vr;
+    a.el.style.left = a.x + 'px';
+    a.el.style.top = a.y + 'px';
+    a.el.style.transform = 'rotate(' + a.rot + 'deg)';
+    // off-screen → remove
+    if (a.y > L.h + 40) { a.el.remove(); return false; }
+    if (a.x < -40 || a.x > L.w + 40) { a.el.remove(); return false; }
+    // collision with ship
+    if (Math.abs(a.x + a.size/2 - sx) < 32 && Math.abs(a.y + a.size/2 - sy) < 32) {
+      // hit!
+      a.alive = false; a.el.classList.add('hit');
+      setTimeout(() => a.el.remove(), 200);
+      spawnParticles(a.x + a.size/2, a.y + a.size/2, '#FFA726');
+      shake();
+      flashScreen();
+      S.tone(140, 0.2, 'sawtooth', 0.15);
+      if (Date.now() < shieldEnd) {
+        shieldEnd = 0; S.toast('🛡️ 擋住小行星！');
+      } else if (shieldCount > 0) {
+        shieldCount--; if (shieldCount === 0) shieldEnd = 0; renderLives();
+        S.toast('🛡️ ×' + shieldCount + ' 擋住！');
+      } else if (!isInvincible()) doHit();
+      return false;
+    }
+    return true;
+  });
+}
+
 function spawnUfo() {
   if (ufo || didEnd || pause) return;
   const r = stage.getBoundingClientRect();
@@ -2647,6 +2741,7 @@ function tick() {
   tickDrone(L);
   tryAlienShoot();
   tickAlienLasers(L);
+  tickAsteroids();
 
   // danger border when alien near ship lane
   if (inDanger()) {
@@ -2862,6 +2957,9 @@ function start() {
   if (wallEl && wallEl.parentNode) { wallEl.remove(); wallEl = null; }
   if (slowmoEl && slowmoEl.parentNode) { slowmoEl.remove(); slowmoEl = null; }
   if (multiAuraEl && multiAuraEl.parentNode) { multiAuraEl.remove(); multiAuraEl = null; }
+  // clear stage hazards (asteroids)
+  asteroids.forEach(a => { if (a.el.parentNode) a.el.remove(); });
+  asteroids = [];
   invincibleEnd = 0;
   // reset power-up timers (slowmo / multi)
   slowmoEnd = 0; multiEnd = 0;
