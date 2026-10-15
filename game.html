@@ -908,16 +908,18 @@ const displayName = (function () {
 
 $('modeTag').textContent = mode.emoji + ' ' + mode.title;
 $('hint').innerHTML = mode.id === 'move'
-  ? '左右移 · <b>自動射</b>'
+  ? '左右移 · <b>自動射</b> · 右掣/Enter = 大技'
   : mode.id === 'left'
-    ? '左右移 · 左掣 <b>射</b>'
-    : mode.id === 'right'
-      ? '左右移 · 右掣 <b>射</b>'
-      : mode.id === 'move+'
-        ? '自由移 · <b>自動射</b>'
-        : mode.id === 'left+'
-          ? '自由移 · 左掣 <b>射</b>'
-          : '自由移 · 右掣 <b>射</b>';
+    ? '左右移 · 左掣 <b>射</b> · 右掣 = 大技'
+    : mode.id === 'move+'
+      ? '自由移 · <b>自動射</b> · 右掣 = 大技'
+      : mode.id === 'left+'
+        ? '自由移 · 左掣 <b>射</b> · 右掣 = 大技'
+        : mode.id === 'ipad'
+          ? 'D-pad · 自動射 · 撳掣 = 大技'
+          : mode.id === 'wasd'
+            ? 'A/D · 自動射 · Enter = 大技'
+            : '滑鼠上下 · 自動射 · Enter = 大技';
 $('guide').textContent = mode.id === 'move'
   ? '只移動 · 子彈自己射 · 無時限'
   : mode.id === 'left'
@@ -1230,16 +1232,12 @@ if (mode.id === 'left' || mode.id === 'left+') {
   stage.addEventListener('pointercancel', () => setFireHold(false));
   stage.addEventListener('pointerleave',  () => setFireHold(false));
 }
-if (mode.id === 'right' || mode.id === 'right+') {
-  S.bindRight(stage, () => { if (!didEnd) shoot(); }, '用右掣／兩指射');
-  // also support hold for right-click / two-finger tap
+// ── right-click (or two-finger tap) → trigger special skill (大技) ──
+// Works in all mouse modes. Touch-only modes (ipad/wasd/landscape) skip this.
+if (mode.id !== 'ipad' && mode.id !== 'wasd' && mode.id !== 'landscape') {
+  S.bindRight(stage, () => { if (!didEnd) useShipSkill(); }, '右掣 / 兩指 = 大技');
+  // prevent default right-click menu
   stage.addEventListener('contextmenu', e => e.preventDefault());
-  stage.addEventListener('pointerdown', e => {
-    if (e.button === 2) { tryLeftShoot(e); setFireHold(true); }
-  });
-  stage.addEventListener('pointerup',     () => setFireHold(false));
-  stage.addEventListener('pointercancel', () => setFireHold(false));
-  stage.addEventListener('pointerleave',  () => setFireHold(false));
 }
 
 function clearField() {
